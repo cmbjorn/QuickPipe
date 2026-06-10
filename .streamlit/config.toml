@@ -1,0 +1,12 @@
+# Theme is applied everywhere (local + Streamlit Community Cloud).
+# Server address/port are intentionally NOT pinned here so a Cloud deploy can
+# manage them; the local launchers (launch.py / run.sh) pass --server.port=8502.
+[theme]
+primaryColor             = "#2563EB"
+backgroundColor          = "#FFFFFF"
+secondaryBackgroundColor = "#F8FAFC"
+textColor                = "#0F172A"
+font                     = "sans serif"
+
+[server]
+headless = true
