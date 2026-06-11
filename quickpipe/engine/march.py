@@ -95,6 +95,7 @@ def _pipe_hydraulics(pipe, fluid, P_in, T_C, correlation, voidage_method,
     P = P_in
     L_sub = L_eff / n
     dz_sub = dz / n
+    V_sg_last = V_sl_last = 0.0
     for i in range(n):
         props = props_in if i == 0 else props_at(fluid, P, T_C)
         seg = _friction_segment(props, D_eff, rough, L_sub, correlation, voidage_method)
@@ -104,6 +105,8 @@ def _pipe_hydraulics(pipe, fluid, P_in, T_C, correlation, voidage_method,
         dP_fric += df
         dP_grav += dg
         V = seg["Vsg"] + seg["Vsl"]
+        V_sg_last = seg.get("Vsg", 0.0)
+        V_sl_last = seg.get("Vsl", 0.0)
         V_e, _ = _E.calculate_erosion_velocity(props["rho_g"], props["rho_l"], props["x_gas"])
         V_max = max(V_max, V)
         V_e_min = min(V_e_min, V_e if V_e > 0 else V_e_min)
@@ -120,6 +123,7 @@ def _pipe_hydraulics(pipe, fluid, P_in, T_C, correlation, voidage_method,
         "V_ms": V_max, "V_e_ms": V_e_min, "regime": regime,
         "out_of_range": oor, "mach_gas": mach,
         "props_in": props_in, "D_eff": D_eff, "L_eff": L_eff,
+        "V_sg_ms": V_sg_last, "V_sl_ms": V_sl_last,
     }
 
 
@@ -166,6 +170,9 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
             v_e, v = h["V_e_ms"], h["V_ms"]
             ratio = v / v_e if v_e > 0 else 0.0
             m_kgh, q_m3h = _flow_cols(h["props_in"])
+            # Superficial velocities for regime map
+            v_sg = h.get("V_sg_ms", 0.0)
+            v_sl = h.get("V_sl_ms", 0.0)
             row = QuickpipeRow(
                 element=el.name, type="Pipe", pipe=f"{el.dn}/{el.pn}",
                 id_mm=round(h["D_eff"] * 1000, 1), l_m=el.length_m,
@@ -176,7 +183,7 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
                 dp_fric_kpa=dP_f / 1000.0, dp_grav_kpa=dP_g / 1000.0,
                 dp_kpa=(dP_f + dP_g) / 1000.0, p_out_bara=P / 1e5,
                 v_ms=round(v, 3), v_e_ms=round(v_e, 2), v_over_ve=round(ratio, 3),
-                regime=h["regime"])
+                regime=h["regime"], v_sg_ms=round(v_sg, 4), v_sl_ms=round(v_sl, 4))
             total += dP_f + dP_g
             total_f += dP_f
             total_g += dP_g

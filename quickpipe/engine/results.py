@@ -31,6 +31,8 @@ class QuickpipeRow:
     v_e_ms: float
     v_over_ve: float
     regime: str
+    v_sg_ms: float = 0.0  # superficial gas velocity (two-phase)
+    v_sl_ms: float = 0.0  # superficial liquid velocity (two-phase)
     warning: str = ""     # not a column; surfaced separately
 
     def to_dict(self) -> dict:

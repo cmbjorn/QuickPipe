@@ -11,7 +11,7 @@ st.set_page_config(page_title="Quickpipe — Line Sizing", page_icon="🧭",
 
 from quickpipe.engine import march                                          # noqa: E402
 from quickpipe.ui import (state, sidebar, editor, table, sketch,            # noqa: E402
-                          report_panel, overview)
+                          report_panel, overview, regime_panel)
 
 _CSS = """
 <style>
@@ -81,6 +81,7 @@ def main():
             st.error(f"Calculation error: {err}")
         elif result is not None:
             table.render(result)
+            regime_panel.render(result)
             with st.expander("Sketch", expanded=False):
                 sketch.render(result)
             with st.expander("Export & report", expanded=True):
