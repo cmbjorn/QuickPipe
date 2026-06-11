@@ -84,10 +84,13 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
     el["pn"] = c2.selectbox("PN", state.PN_LIST,
                             index=_idx(state.PN_LIST, el.get("pn", "PN40")), key=f"{el['id']}_pn")
     c3, c4 = st.columns(2)
-    el["length_m"] = c3.number_input("Length (m)", 0.0, 1e5,
-                                     float(el.get("length_m", 10.0)), 1.0, key=f"{el['id']}_L")
-    el["dz_m"] = c4.number_input("Elevation Δz (m)", -1000.0, 1000.0,
-                                 float(el.get("dz_m", 0.0)), 0.5, key=f"{el['id']}_dz")
+    el["length_m"] = c3.number_input("Length / height (m)", 0.0, 1e5,
+                                     float(el.get("length_m", 10.0)), 1.0, key=f"{el['id']}_L",
+                                     help="Horizontal: run length. Vertical: rise/fall height.")
+    el["orientation"] = c4.selectbox(
+        "Orientation", state.ORIENTATIONS,
+        index=_idx(state.ORIENTATIONS, el.get("orientation", "Horizontal")),
+        key=f"{el['id']}_or")
     el["material"] = st.selectbox("Material", state.MATERIALS,
                                   index=_idx(state.MATERIALS, el.get("material", "SS316L")),
                                   key=f"{el['id']}_mat")
@@ -119,13 +122,10 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
 
 def _misc(el: dict) -> None:
     el["name"] = st.text_input("Name", el.get("name", "Equipment"), key=f"{el['id']}_nm")
-    c1, c2 = st.columns(2)
-    el["dp_kpa"] = c1.number_input(
+    el["dp_kpa"] = st.number_input(
         "ΔP (kPa)  — + drops, − adds", -1e5, 1e5, float(el.get("dp_kpa", 0.0)),
         1.0, key=f"{el['id']}_dp",
         help="Positive = pressure loss (valve/equipment). Negative = pressure gain (pump).")
-    el["dz_m"] = c2.number_input("Elevation Δz (m)", -1000.0, 1000.0,
-                                 float(el.get("dz_m", 0.0)), 0.5, key=f"{el['id']}_dz")
 
 
 _ICON = {"pipe": "│", "misc": "◆"}

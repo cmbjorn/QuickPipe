@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 
 from . import state
 from quickpipe.engine import suggest_dn, SizingCriteria
-from quickpipe.engine.elements import inlet_from_dict
+from quickpipe.engine.elements import inlet_from_dict, ORIENT_SIGN
 
 
 def _source_fluid():
@@ -76,7 +76,9 @@ def render_suggest_dn(pipe: dict, inlet_p_bara: float) -> None:
                 lined=pipe.get("lined", False),
                 liner_material=pipe.get("liner_material", "PTFE"),
                 liner_thickness_mm=pipe.get("liner_thickness_mm", 1.0),
-                length_m=pipe.get("length_m", 10.0), dz_m=pipe.get("dz_m", 0.0),
+                length_m=pipe.get("length_m", 10.0),
+                dz_m=ORIENT_SIGN.get(pipe.get("orientation", "Horizontal"), 0.0)
+                * pipe.get("length_m", 10.0),
                 fittings_list=pipe.get("fittings_list", []),
                 correlation=st.session_state.get(state.K_CORR, "Beggs-Brill"),
                 voidage_method=st.session_state.get(state.K_VOID, "Homogeneous"),

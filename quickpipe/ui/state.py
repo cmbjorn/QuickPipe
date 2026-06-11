@@ -20,7 +20,7 @@ from standards.piping import (
     PIPE_DATABASE, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, FITTING_Le_over_D)
 
 from quickpipe.engine.elements import (
-    Pipe, Misc, default_inlet, element_to_dict)
+    Pipe, Misc, default_inlet, element_to_dict, ORIENTATIONS)
 
 # ── Picker option lists ──────────────────────────────────────────────────────
 DN_LIST = list(PIPE_DATABASE.keys())
@@ -49,7 +49,7 @@ def _next_id(prefix: str) -> str:
 def _default_section() -> dict:
     return element_to_dict(Pipe(
         id=_next_id("p"), name="Section 1", dn="DN50", pn="PN40",
-        length_m=20.0, dz_m=0.0, material="SS316L",
+        length_m=20.0, orientation="Horizontal", material="SS316L",
         fittings_list=[{"type": "90° Standard Elbow", "qty": 2}]))
 
 

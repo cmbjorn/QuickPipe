@@ -68,27 +68,28 @@ r = row_for(res, "G")
 check("friction > 0 and P_out < P_in", r.dp_fric_kpa > 0 and r.p_out_bara < r.p_in_bara)
 check("regime is single-phase gas", "gas" in r.regime.lower(), r.regime)
 
-# 3. Elevation sign + magnitude ------------------------------------------------
-print("3. Elevation gravity (water, Δz = ±10 m)")
+# 3. Elevation sign + magnitude (vertical section = elevation change) ----------
+print("3. Vertical sections (water, 10 m up / down)")
 props = props_at(water(50.0), 10e5, 25.0)
 exp = props["rho_l"] * G * 10.0 / 1000.0
-for dz, sgn in ((10.0, +1), (-10.0, -1)):
+for orient, sgn in (("Vertical Upflow", +1), ("Vertical Downflow", -1)):
     res = march(inlet(water(50.0)),
-                [Pipe(id="p", name="R", dn="DN50", pn="PN40", length_m=5.0, dz_m=dz)])
+                [Pipe(id="p", name="R", dn="DN50", pn="PN40", length_m=10.0, orientation=orient)])
     r = row_for(res, "R")
-    check(f"ΔP_grav for Δz={dz:+.0f}", abs(r.dp_grav_kpa - sgn * exp) < 0.5,
+    check(f"ΔP_grav {orient}", abs(r.dp_grav_kpa - sgn * exp) < 0.5,
           f"{r.dp_grav_kpa:.2f} vs {sgn*exp:.2f} kPa")
 
-# 4. No double-count -----------------------------------------------------------
-print("4. No gravity double-count (L_eff ≫ length)")
+# 4. No double-count (vertical riser, L_eff ≫ height) --------------------------
+print("4. No gravity double-count (vertical, L_eff ≫ height)")
 fit = [{"type": "90° Standard Elbow", "qty": 20}]
-p = Pipe(id="p", name="F", dn="DN50", pn="PN40", length_m=2.0, dz_m=5.0, fittings_list=fit)
+p = Pipe(id="p", name="F", dn="DN50", pn="PN40", length_m=5.0,
+         orientation="Vertical Upflow", fittings_list=fit)
 _, _, le = pipe_geometry(p)
 res = march(inlet(water(50.0)), [p])
 r = row_for(res, "F")
 exp5 = props["rho_l"] * G * 5.0 / 1000.0
-check("L_eff ≫ length (fittings add)", le > 5 * p.length_m)
-check("ΔP_grav uses geometric Δz only", abs(r.dp_grav_kpa - exp5) < 0.5,
+check("L_eff ≫ height (fittings add)", le > 5 * p.length_m)
+check("ΔP_grav uses geometric height only", abs(r.dp_grav_kpa - exp5) < 0.5,
       f"{r.dp_grav_kpa:.2f} vs {exp5:.2f} kPa")
 
 # 5. Misc ±ΔP ------------------------------------------------------------------

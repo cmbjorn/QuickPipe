@@ -18,7 +18,7 @@ import multiphase_engine as _E
 from standards.piping import (
     PIPE_DATABASE, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, sum_le_fit)
 
-from .elements import section_from_dict, inlet_from_dict
+from .elements import section_from_dict, inlet_from_dict, ORIENT_SIGN
 from .fluids import props_at, composition_str, fluid_label, to_mass_basis
 from .results import QuickpipeRow
 
@@ -76,6 +76,8 @@ def _pipe_hydraulics(pipe, fluid, P_in, T_C, correlation, voidage_method,
                      substep_gas, max_substeps):
     D_eff, rough, le_fit = pipe_geometry(pipe)
     L_eff = pipe.length_m + le_fit
+    # Vertical section: the length IS the elevation change. Horizontal: Δz = 0.
+    dz = ORIENT_SIGN.get(pipe.orientation, 0.0) * pipe.length_m
     props_in = props_at(fluid, P_in, T_C)
 
     n = 1
@@ -92,7 +94,7 @@ def _pipe_hydraulics(pipe, fluid, P_in, T_C, correlation, voidage_method,
     mach = 0.0
     P = P_in
     L_sub = L_eff / n
-    dz_sub = pipe.dz_m / n
+    dz_sub = dz / n
     for i in range(n):
         props = props_in if i == 0 else props_at(fluid, P, T_C)
         seg = _friction_segment(props, D_eff, rough, L_sub, correlation, voidage_method)
@@ -114,7 +116,7 @@ def _pipe_hydraulics(pipe, fluid, P_in, T_C, correlation, voidage_method,
     if V_e_min == float("inf"):
         V_e_min = 0.0
     return {
-        "dP_fric_Pa": dP_fric, "dP_grav_Pa": dP_grav,
+        "dP_fric_Pa": dP_fric, "dP_grav_Pa": dP_grav, "dz": dz,
         "V_ms": V_max, "V_e_ms": V_e_min, "regime": regime,
         "out_of_range": oor, "mach_gas": mach,
         "props_in": props_in, "D_eff": D_eff, "L_eff": L_eff,
@@ -154,17 +156,20 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
         if el.kind == "pipe":
             h = _pipe_hydraulics(el, fluid, P_in, T_C, correlation, voidage_method,
                                  substep_gas, max_substeps)
-            dP_f, dP_g = h["dP_fric_Pa"], h["dP_grav_Pa"]
+            dP_f, dP_g, dz = h["dP_fric_Pa"], h["dP_grav_Pa"], h["dz"]
             P = max(_P_FLOOR_PA, P_in - dP_f - dP_g)
-            x_h += el.length_m
-            z += el.dz_m
+            # Horizontal sections advance distance; vertical sections advance height.
+            if el.orientation == "Horizontal":
+                x_h += el.length_m
+            else:
+                z += dz
             v_e, v = h["V_e_ms"], h["V_ms"]
             ratio = v / v_e if v_e > 0 else 0.0
             m_kgh, q_m3h = _flow_cols(h["props_in"])
             row = QuickpipeRow(
                 element=el.name, type="Pipe", pipe=f"{el.dn}/{el.pn}",
                 id_mm=round(h["D_eff"] * 1000, 1), l_m=el.length_m,
-                l_eff_m=round(h["L_eff"], 2), dz_m=el.dz_m,
+                l_eff_m=round(h["L_eff"], 2), dz_m=dz,
                 fluid=fluid_label(fluid, h["props_in"]),
                 composition=composition_str(h["props_in"]),
                 flow_kgh=m_kgh, flow_m3h=q_m3h, p_in_bara=P_in / 1e5,
@@ -184,22 +189,18 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
 
         elif el.kind == "misc":
             props = props_at(fluid, P_in, T_C)
-            rho_is = _insitu_density(props)
-            dP_g = rho_is * G * el.dz_m
             dP_eq = el.dp_kpa * 1000.0
-            P = max(_P_FLOOR_PA, P_in - dP_eq - dP_g)
-            z += el.dz_m
+            P = max(_P_FLOOR_PA, P_in - dP_eq)
             m_kgh, q_m3h = _flow_cols(props)
             row = QuickpipeRow(
                 element=el.name, type="Misc", pipe="", id_mm=0.0, l_m=0.0,
-                l_eff_m=0.0, dz_m=el.dz_m, fluid=fluid_label(fluid, props),
+                l_eff_m=0.0, dz_m=0.0, fluid=fluid_label(fluid, props),
                 composition=composition_str(props), flow_kgh=m_kgh, flow_m3h=q_m3h,
-                p_in_bara=P_in / 1e5, dp_fric_kpa=0.0, dp_grav_kpa=dP_g / 1000.0,
-                dp_kpa=(dP_eq + dP_g) / 1000.0, p_out_bara=P / 1e5,
+                p_in_bara=P_in / 1e5, dp_fric_kpa=0.0, dp_grav_kpa=0.0,
+                dp_kpa=dP_eq / 1000.0, p_out_bara=P / 1e5,
                 v_ms=0.0, v_e_ms=0.0, v_over_ve=0.0,
                 regime=("pressure boost" if el.dp_kpa < 0 else "Δp element"))
-            total += dP_eq + dP_g
-            total_g += dP_g
+            total += dP_eq
         else:
             continue
 

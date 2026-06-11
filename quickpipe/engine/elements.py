@@ -42,6 +42,12 @@ class LineInlet:
     fluid: FluidSpec = field(default_factory=FluidSpec)
 
 
+# A section runs either horizontally or vertically; for a vertical section the
+# length IS the rise (up) or fall (down), i.e. the elevation change.
+ORIENTATIONS = ["Horizontal", "Vertical Upflow", "Vertical Downflow"]
+ORIENT_SIGN = {"Horizontal": 0.0, "Vertical Upflow": 1.0, "Vertical Downflow": -1.0}
+
+
 @dataclass
 class Pipe:
     kind: str = "pipe"
@@ -49,13 +55,16 @@ class Pipe:
     name: str = "Section"
     dn: str = "DN50"
     pn: str = "PN40"
-    length_m: float = 10.0                 # geometric pipe length
-    dz_m: float = 0.0                      # explicit elevation change (+ = rises)
+    length_m: float = 10.0                 # run (horizontal) or height (vertical)
+    orientation: str = "Horizontal"        # see ORIENTATIONS
     material: str = "SS316L"
     lined: bool = False
     liner_material: str = "PTFE"
     liner_thickness_mm: float = 1.0
     fittings_list: list = field(default_factory=list)
+
+    def dz(self) -> float:
+        return ORIENT_SIGN.get(self.orientation, 0.0) * self.length_m
 
 
 @dataclass
@@ -64,7 +73,6 @@ class Misc:
     id: str = "m1"
     name: str = "Equipment ΔP"
     dp_kpa: float = 0.0                    # signed: + drops P, − adds P (pump)
-    dz_m: float = 0.0
 
 
 _KIND_CLS = {"pipe": Pipe, "misc": Misc}
@@ -106,6 +114,6 @@ def default_sections() -> list:
     return [
         element_to_dict(Pipe(
             id="p1", name="Section 1", dn="DN50", pn="PN40",
-            length_m=20.0, dz_m=0.0, material="SS316L",
+            length_m=20.0, orientation="Horizontal", material="SS316L",
             fittings_list=[{"type": "90° Standard Elbow", "qty": 2}])),
     ]
