@@ -139,6 +139,8 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
     """March pressure through the sections from the line inlet conditions."""
     inl = inlet_from_dict(inlet) if isinstance(inlet, dict) else inlet
     secs = [section_from_dict(s) if isinstance(s, dict) else s for s in sections]
+    if not secs:
+        raise ValueError("march requires at least 1 section")
 
     P = inl.P_in_bara * 1e5
     T_C = inl.T_C
