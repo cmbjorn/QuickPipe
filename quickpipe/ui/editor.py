@@ -68,6 +68,15 @@ def _inlet_panel(inl: dict, prefix: str) -> None:
 
 
 def _pipe(el: dict, inlet_p_bara: float) -> None:
+    # Apply a pending DN from the auto-sizer BEFORE the selectbox is created, so
+    # the widget picks it up (a keyed widget can't be set after instantiation).
+    _pend = f"qp_pending_dn_{el['id']}"
+    if _pend in st.session_state:
+        el["dn"] = st.session_state.pop(_pend)
+        # Clear the keyed selectbox so it re-initializes from `index` (= el["dn"]),
+        # which avoids the "set via Session State" warning that setting it raises.
+        st.session_state.pop(f"{el['id']}_dn", None)
+
     el["name"] = st.text_input("Name", el.get("name", "Section"), key=f"{el['id']}_nm")
     c1, c2 = st.columns(2)
     el["dn"] = c1.selectbox("DN", state.DN_LIST,

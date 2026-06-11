@@ -89,7 +89,10 @@ def render_suggest_dn(pipe: dict, inlet_p_bara: float) -> None:
             if rec:
                 st.success(f"Recommended: **{rec}** (smallest size meeting all criteria)")
                 if st.button(f"Apply {rec}", key=f"{pipe['id']}_apply", width="stretch"):
-                    pipe["dn"] = rec
+                    # The DN selectbox is keyed and already instantiated this run,
+                    # so we can't set its value now — hand it off and let the
+                    # editor apply it next run, before the selectbox renders.
+                    st.session_state[f"qp_pending_dn_{pipe['id']}"] = rec
                     st.session_state.pop(f"{pipe['id']}_suggest_out", None)
                     st.rerun()
             else:
