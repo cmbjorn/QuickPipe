@@ -39,40 +39,34 @@ def render(result) -> None:
                     "Regime": row.regime,
                 }]
 
-                # For a more complete picture, show both H and V
-                # We'd need to recalculate with different angles, but for now
-                # just use the computed values
-                col_h, col_v = st.columns(2)
+                # Show horizontal and vertical maps stacked vertically for readability
+                try:
+                    td_h, full_h, vsl_h, vsg_h = compute_regime_grid(
+                        rhol=1000.0, rhog=1.2, mul=0.001, mug=1.8e-5,
+                        sigma=0.073, D=0.05, roughness=1.5e-5,
+                        use_horiz=True,
+                    )
+                    fig_h = build_regime_figure(
+                        td_h, full_h, vsl_h, vsg_h, op_recs_h,
+                        "Horizontal equivalent",
+                    )
+                    st.plotly_chart(fig_h, use_container_width=True, key=f"regime_h_{i}")
+                except Exception as e:
+                    st.warning(f"Could not render horizontal map: {e}")
 
-                with col_h:
-                    try:
-                        td_h, full_h, vsl_h, vsg_h = compute_regime_grid(
-                            rhol=1000.0, rhog=1.2, mul=0.001, mug=1.8e-5,
-                            sigma=0.073, D=0.05, roughness=1.5e-5,
-                            use_horiz=True,
-                        )
-                        fig_h = build_regime_figure(
-                            td_h, full_h, vsl_h, vsg_h, op_recs_h,
-                            "Horizontal equivalent",
-                        )
-                        st.plotly_chart(fig_h, use_container_width=True, key=f"regime_h_{i}")
-                    except Exception as e:
-                        st.warning(f"Could not render horizontal map: {e}")
-
-                with col_v:
-                    try:
-                        td_v, full_v, vsl_v, vsg_v = compute_regime_grid(
-                            rhol=1000.0, rhog=1.2, mul=0.001, mug=1.8e-5,
-                            sigma=0.073, D=0.05, roughness=1.5e-5,
-                            use_horiz=False,
-                        )
-                        fig_v = build_regime_figure(
-                            td_v, full_v, vsl_v, vsg_v, op_recs_h,
-                            "Vertical upflow equivalent",
-                        )
-                        st.plotly_chart(fig_v, use_container_width=True, key=f"regime_v_{i}")
-                    except Exception as e:
-                        st.warning(f"Could not render vertical map: {e}")
+                try:
+                    td_v, full_v, vsl_v, vsg_v = compute_regime_grid(
+                        rhol=1000.0, rhog=1.2, mul=0.001, mug=1.8e-5,
+                        sigma=0.073, D=0.05, roughness=1.5e-5,
+                        use_horiz=False,
+                    )
+                    fig_v = build_regime_figure(
+                        td_v, full_v, vsl_v, vsg_v, op_recs_h,
+                        "Vertical upflow equivalent",
+                    )
+                    st.plotly_chart(fig_v, use_container_width=True, key=f"regime_v_{i}")
+                except Exception as e:
+                    st.warning(f"Could not render vertical map: {e}")
 
         except Exception as e:
             st.warning(f"Error rendering regime map for {row.element}: {e}")
