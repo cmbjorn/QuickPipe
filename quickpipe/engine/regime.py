@@ -200,6 +200,17 @@ def build_regime_figure(
             hovertemplate=f"<b>{_lbl}</b><br>V_sl={_vsl_c:.2f} m/s, V_sg={_vsg_c:.2f} m/s<extra></extra>",
         ))
 
+    # Auto-scale axes to include all operating points with padding
+    _all_vsl = [max(r.get("V_sl (m/s)", 1e-4), 1e-4) for r in op_records]
+    _all_vsg = [max(r.get("V_sg (m/s)", 1e-4), 1e-4) for r in op_records]
+    if _all_vsl and _all_vsg:
+        _vsl_min = np.log10(min(_all_vsl)) - 0.3
+        _vsl_max = np.log10(max(_all_vsl)) + 0.3
+        _vsg_min = np.log10(min(_all_vsg)) - 0.3
+        _vsg_max = np.log10(max(_all_vsg)) + 0.3
+        fig.update_xaxes(range=[_vsl_min, max(_vsl_max, 1.0)])
+        fig.update_yaxes(range=[_vsg_min, max(_vsg_max, 2.0)])
+
     fig.update_layout(
         template="plotly_white", title=title,
         xaxis_title="V_sl (m/s) — log scale", yaxis_title="V_sg (m/s) — log scale",
