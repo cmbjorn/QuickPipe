@@ -69,7 +69,7 @@ def init_state() -> None:
             "lines": [line], "active": line["id"]}
     st.session_state.setdefault(K_CORR, "Beggs-Brill")
     st.session_state.setdefault(K_VOID, "Homogeneous")
-    st.session_state.setdefault(K_SUBSTEP, False)
+    st.session_state.setdefault(K_SUBSTEP, True)  # default: enable sub-step accuracy
 
 
 # ── Project / line accessors ─────────────────────────────────────────────────
