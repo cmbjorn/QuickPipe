@@ -24,7 +24,7 @@ class SizingCriteria:
     erosion_C: float = 100.0        # API RP 14E constant
 
 
-def suggest_dn(fluid, P_pa, T_C, *, pn="PN40", material="SS316L",
+def suggest_dn(fluid, P_pa, T_C, *, schedule="40S", material="SS316L",
                lined=False, liner_material="PTFE", liner_thickness_mm=1.0,
                length_m=100.0, dz_m=0.0, fittings_list=None,
                correlation="Beggs-Brill", voidage_method="Homogeneous",
@@ -37,9 +37,9 @@ def suggest_dn(fluid, P_pa, T_C, *, pn="PN40", material="SS316L",
     table = []
     recommended = None
     for dn in PIPE_DATABASE:
-        if pn not in PIPE_DATABASE[dn]:
+        if schedule not in PIPE_DATABASE[dn]:
             continue
-        D = PIPE_DATABASE[dn][pn]
+        D = PIPE_DATABASE[dn][schedule]
         if lined:
             D_eff = D - 2.0 * liner_thickness_mm / 1000.0
             rough = LINER_ROUGHNESS[liner_material]

@@ -16,7 +16,8 @@ from dataclasses import dataclass, field
 
 import multiphase_engine as _E
 from standards.piping import (
-    PIPE_DATABASE, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, sum_le_fit)
+    PIPE_DATABASE, TUBING_DATABASE, TUBING_ROUGHNESS,
+    MATERIAL_ROUGHNESS, LINER_ROUGHNESS, sum_le_fit)
 
 from .elements import section_from_dict, inlet_from_dict, ORIENT_SIGN
 from .fluids import props_at, composition_str, fluid_label, to_mass_basis
@@ -24,6 +25,14 @@ from .results import QuickpipeRow
 
 G = 9.80665
 _P_FLOOR_PA = 1000.0   # 0.01 bara floor
+
+# Phase-aware typical velocity guidance (soft advisory warnings only — never
+# rejects a size). Liquid/gas upper bands are rule-of-thumb; two-phase lower
+# bound suppresses slugging (~10 ft/s, API RP 14E). The erosion check (V/V_e)
+# still governs the true upper limit.
+V_LIQ_MAX = 3.0    # m/s — above: erosion / water-hammer risk
+V_GAS_MAX = 20.0   # m/s — above: noise / erosion
+V_2PH_MIN = 3.0    # m/s — below: slug-flow risk
 
 
 @dataclass
@@ -55,13 +64,23 @@ def _insitu_density(props: dict) -> float:
 
 def pipe_geometry(pipe):
     """(D_eff_m, roughness_m, fittings_equiv_length_m) for a Pipe section."""
-    D = PIPE_DATABASE[pipe.dn][pipe.pn]
-    if pipe.lined:
-        D_eff = D - 2.0 * pipe.liner_thickness_mm / 1000.0
-        rough = LINER_ROUGHNESS[pipe.liner_material]
-    else:
+    if getattr(pipe, "pipe_type", "DN Pipe") == "Tubing":
+        D = TUBING_DATABASE[pipe.tube_size][pipe.tube_wall]
+        rough = TUBING_ROUGHNESS
         D_eff = D
-        rough = MATERIAL_ROUGHNESS.get(pipe.material, MATERIAL_ROUGHNESS["SS316L"])
+    else:
+        D = PIPE_DATABASE[pipe.dn][pipe.schedule]
+        if pipe.lined:
+            D_eff = D - 2.0 * pipe.liner_thickness_mm / 1000.0
+            if D_eff <= 0:
+                raise ValueError(
+                    f"{pipe.dn}/{pipe.schedule}: liner {pipe.liner_thickness_mm:.1f} mm is too thick "
+                    f"(bore {D*1000:.1f} mm → effective bore {D_eff*1000:.1f} mm ≤ 0). "
+                    "Reduce liner thickness or choose a larger pipe.")
+            rough = LINER_ROUGHNESS[pipe.liner_material]
+        else:
+            D_eff = D
+            rough = MATERIAL_ROUGHNESS.get(pipe.material, MATERIAL_ROUGHNESS["SS316L"])
     le_fit = sum_le_fit({"fittings_list": pipe.fittings_list}, D_eff)
     return D_eff, rough, le_fit
 
@@ -122,7 +141,7 @@ def _pipe_hydraulics(pipe, fluid, P_in, T_C, correlation, voidage_method,
         "dP_fric_Pa": dP_fric, "dP_grav_Pa": dP_grav, "dz": dz,
         "V_ms": V_max, "V_e_ms": V_e_min, "regime": regime,
         "out_of_range": oor, "mach_gas": mach,
-        "props_in": props_in, "D_eff": D_eff, "L_eff": L_eff,
+        "props_in": props_in, "D_eff": D_eff, "L_eff": L_eff, "le_fit": le_fit,
         "V_sg_ms": V_sg_last, "V_sl_ms": V_sl_last,
     }
 
@@ -172,17 +191,30 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
             v_e, v = h["V_e_ms"], h["V_ms"]
             ratio = v / v_e if v_e > 0 else 0.0
             m_kgh, q_m3h = _flow_cols(h["props_in"])
+            # Minor losses (fittings): split from total friction by equivalent-length ratio.
+            le_fit = h.get("le_fit", 0.0)
+            dp_fit_kpa = dP_f / 1000.0 * le_fit / h["L_eff"] if h["L_eff"] > 0 else 0.0
             # Superficial velocities for regime map
             v_sg = h.get("V_sg_ms", 0.0)
             v_sl = h.get("V_sl_ms", 0.0)
+            _is_tube = getattr(el, "pipe_type", "DN Pipe") == "Tubing"
+            _pipe_label = (f"{el.tube_size}/{el.tube_wall}" if _is_tube
+                           else f"{el.dn}/{el.schedule}")
+            # Lining only applies to (and is only bored into) DN pipe, not tubing.
+            _lining = (f"{el.liner_material} {el.liner_thickness_mm:.1f} mm"
+                       if el.lined and not _is_tube else "—")
+            _material = el.material if not _is_tube else "—"
+            _schedule = el.schedule if not _is_tube else "—"
             row = QuickpipeRow(
-                element=el.name, type="Pipe", pipe=f"{el.dn}/{el.pn}",
+                element=el.name, type="Pipe", pipe=_pipe_label,
+                material=_material, schedule=_schedule, lining=_lining,
                 id_mm=round(h["D_eff"] * 1000, 1), l_m=el.length_m,
                 l_eff_m=round(h["L_eff"], 2), dz_m=dz,
                 fluid=fluid_label(fluid, h["props_in"]),
                 composition=composition_str(h["props_in"]),
                 flow_kgh=m_kgh, flow_m3h=q_m3h, p_in_bara=P_in / 1e5,
-                dp_fric_kpa=dP_f / 1000.0, dp_grav_kpa=dP_g / 1000.0,
+                dp_fric_kpa=dP_f / 1000.0, dp_fit_kpa=round(dp_fit_kpa, 3),
+                dp_grav_kpa=dP_g / 1000.0,
                 dp_kpa=(dP_f + dP_g) / 1000.0, p_out_bara=P / 1e5,
                 v_ms=round(v, 3), v_e_ms=round(v_e, 2), v_over_ve=round(ratio, 3),
                 regime=h["regime"], v_sg_ms=round(v_sg, 4), v_sl_ms=round(v_sl, 4))
@@ -193,6 +225,13 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
                 warns.append(f"{el.name}: gas Mach {h['mach_gas']:.2f} — beyond correlation validity (ΔP uncertain).")
             if ratio > 1.0:
                 warns.append(f"{el.name}: V/V_e = {ratio:.2f} > 1 — exceeds API RP 14E erosion limit.")
+            x_gas = h["props_in"].get("x_gas", 0.0)
+            if x_gas <= 0.0 and v > V_LIQ_MAX:
+                warns.append(f"{el.name}: V = {v:.1f} m/s > {V_LIQ_MAX:.0f} m/s — high for liquid service (erosion / water-hammer risk).")
+            elif x_gas >= 1.0 and v > V_GAS_MAX:
+                warns.append(f"{el.name}: V = {v:.1f} m/s > {V_GAS_MAX:.0f} m/s — high for gas service (noise / erosion).")
+            elif 0.0 < x_gas < 1.0 and v < V_2PH_MIN:
+                warns.append(f"{el.name}: V = {v:.1f} m/s < {V_2PH_MIN:.0f} m/s — low for two-phase (slug-flow risk).")
             if P <= _P_FLOOR_PA * 1.001:
                 warns.append(f"{el.name}: pressure hit the 0.01 bara floor — line infeasible (too long / undersized).")
 
@@ -202,7 +241,7 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
             P = max(_P_FLOOR_PA, P_in - dP_eq)
             m_kgh, q_m3h = _flow_cols(props)
             row = QuickpipeRow(
-                element=el.name, type="Misc", pipe="", id_mm=0.0, l_m=0.0,
+                element=el.name, type="Misc", pipe="", material="", schedule="", id_mm=0.0, l_m=0.0,
                 l_eff_m=0.0, dz_m=0.0, fluid=fluid_label(fluid, props),
                 composition=composition_str(props), flow_kgh=m_kgh, flow_m3h=q_m3h,
                 p_in_bara=P_in / 1e5, dp_fric_kpa=0.0, dp_grav_kpa=0.0,

@@ -13,7 +13,9 @@ from dataclasses import dataclass
 class QuickpipeRow:
     element: str
     type: str
-    pipe: str            # "DN/PN" (blank for non-pipe)
+    pipe: str            # "DN/Schedule" (blank for non-pipe)
+    material: str        # e.g. "SS316L" (blank for non-pipe)
+    schedule: str        # e.g. "40S" (blank for tubing / non-pipe)
     id_mm: float
     l_m: float
     l_eff_m: float
@@ -31,30 +33,36 @@ class QuickpipeRow:
     v_e_ms: float
     v_over_ve: float
     regime: str
+    lining: str = "—"     # "<liner> <t> mm" for lined pipe, else "—"
+    dp_fit_kpa: float = 0.0  # minor losses (fittings) extracted from dp_fric
     v_sg_ms: float = 0.0  # superficial gas velocity (two-phase)
     v_sl_ms: float = 0.0  # superficial liquid velocity (two-phase)
     warning: str = ""     # not a column; surfaced separately
 
     def to_dict(self) -> dict:
+        # `type`, `composition`, `v_e_ms` are intentionally not columns: type is
+        # used for filtering (overview/sketch/report), composition is shown in
+        # the report header, and V_e is implied by V and the V/V_e ratio.
         return {
             "Element":        self.element,
-            "Type":           self.type,
             "Pipe":           self.pipe,
+            "Material":       self.material,
+            "Schedule":       self.schedule,
             "ID (mm)":        self.id_mm,
+            "Lining":         self.lining,
             "L (m)":          self.l_m,
             "L_eff (m)":      self.l_eff_m,
             "Δz (m)":         self.dz_m,
             "Fluid":          self.fluid,
-            "Composition":    self.composition,
             "Flow (kg/h)":    self.flow_kgh,
             "Flow (m³/h)":    self.flow_m3h,
             "P_in (bara)":    self.p_in_bara,
             "ΔP_fric (kPa)":  self.dp_fric_kpa,
+            "ΔP_fit (kPa)":   self.dp_fit_kpa,
             "ΔP_grav (kPa)":  self.dp_grav_kpa,
             "ΔP (kPa)":       self.dp_kpa,
             "P_out (bara)":   self.p_out_bara,
             "V (m/s)":        self.v_ms,
-            "V_e (m/s)":      self.v_e_ms,
             "V/V_e":          self.v_over_ve,
             "Regime":         self.regime,
         }
@@ -62,4 +70,4 @@ class QuickpipeRow:
 
 # Column order for DataFrame / Excel rendering.
 COLUMNS = list(QuickpipeRow(
-    "", "", "", 0, 0, 0, 0, "", "", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "").to_dict().keys())
+    "", "", "", "", "", 0, 0, 0, 0, "", "", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "").to_dict().keys())

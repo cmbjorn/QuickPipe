@@ -73,16 +73,42 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
     _pend = f"qp_pending_dn_{el['id']}"
     if _pend in st.session_state:
         el["dn"] = st.session_state.pop(_pend)
-        # Clear the keyed selectbox so it re-initializes from `index` (= el["dn"]),
-        # which avoids the "set via Session State" warning that setting it raises.
-        st.session_state.pop(f"{el['id']}_dn", None)
+        # Set the widget key directly so the selectbox shows the new DN on this
+        # run.  Setting it before the widget is created is the Streamlit-approved
+        # way to pre-populate a keyed widget without a warning.
+        st.session_state[f"{el['id']}_dn"] = el["dn"]
 
     el["name"] = st.text_input("Name", el.get("name", "Section"), key=f"{el['id']}_nm")
+
+    pipe_type = st.radio(
+        "Type", state.PIPE_TYPES,
+        index=_idx(state.PIPE_TYPES, el.get("pipe_type", "DN Pipe")),
+        horizontal=True, key=f"{el['id']}_ptype")
+    el["pipe_type"] = pipe_type
+
     c1, c2 = st.columns(2)
-    el["dn"] = c1.selectbox("DN", state.DN_LIST,
-                            index=_idx(state.DN_LIST, el.get("dn", "DN50")), key=f"{el['id']}_dn")
-    el["pn"] = c2.selectbox("PN", state.PN_LIST,
-                            index=_idx(state.PN_LIST, el.get("pn", "PN40")), key=f"{el['id']}_pn")
+    if pipe_type == "Tubing":
+        tube_size = el.get("tube_size", "T25")
+        el["tube_size"] = c1.selectbox("Tube size (OD)", state.TUBE_LIST,
+                                       index=_idx(state.TUBE_LIST, tube_size),
+                                       key=f"{el['id']}_tsz")
+        walls = state.tube_walls(el["tube_size"])
+        cur_wall = el.get("tube_wall", walls[0]) if el.get("tube_wall") in walls else walls[0]
+        el["tube_wall"] = c2.selectbox("Wall thickness", walls,
+                                       index=_idx(walls, cur_wall),
+                                       key=f"{el['id']}_tw")
+    else:
+        el["dn"] = c1.selectbox("DN", state.DN_LIST,
+                                index=_idx(state.DN_LIST, el.get("dn", "DN50")),
+                                key=f"{el['id']}_dn")
+        el["schedule"] = c2.selectbox("Schedule (ASME B36.19M)", state.SCHEDULE_LIST,
+                                      index=_idx(state.SCHEDULE_LIST, el.get("schedule", "40S")),
+                                      key=f"{el['id']}_sched")
+        _od = state.PIPE_OD_MM.get(el.get("dn", "DN50"))
+        _id_m = state.PIPE_DATABASE.get(el.get("dn", "DN50"), {}).get(el.get("schedule", "40S"))
+        if _od and _id_m:
+            _t = (_od - _id_m * 1000) / 2
+            c2.caption(f"t = {_t:.2f} mm  ·  {state.SCHEDULE_DESCRIPTIONS.get(el['schedule'], '')}")
     c3, c4 = st.columns(2)
     el["length_m"] = c3.number_input("Length / height (m)", 0.0, 1e5,
                                      float(el.get("length_m", 10.0)), 1.0, key=f"{el['id']}_L",
@@ -91,18 +117,21 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
         "Orientation", state.ORIENTATIONS,
         index=_idx(state.ORIENTATIONS, el.get("orientation", "Horizontal")),
         key=f"{el['id']}_or")
-    el["material"] = st.selectbox("Material", state.MATERIALS,
-                                  index=_idx(state.MATERIALS, el.get("material", "SS316L")),
-                                  key=f"{el['id']}_mat")
-    el["lined"] = st.checkbox("Lined", bool(el.get("lined", False)), key=f"{el['id']}_lined")
-    if el["lined"]:
-        lc1, lc2 = st.columns(2)
-        el["liner_material"] = lc1.selectbox("Liner", state.LINERS,
-                                             index=_idx(state.LINERS, el.get("liner_material", "PTFE")),
-                                             key=f"{el['id']}_lmat")
-        el["liner_thickness_mm"] = lc2.number_input("Liner t (mm)", 0.1, 20.0,
-                                                    float(el.get("liner_thickness_mm", 1.0)), 0.5,
-                                                    key=f"{el['id']}_lt")
+    if pipe_type == "DN Pipe":
+        el["material"] = st.selectbox("Material", state.MATERIALS,
+                                      index=_idx(state.MATERIALS, el.get("material", "SS316L")),
+                                      key=f"{el['id']}_mat")
+        el["lined"] = st.checkbox("Lined", bool(el.get("lined", False)), key=f"{el['id']}_lined")
+        if el["lined"]:
+            lc1, lc2 = st.columns(2)
+            el["liner_material"] = lc1.selectbox("Liner", state.LINERS,
+                                                 index=_idx(state.LINERS, el.get("liner_material", "PTFE")),
+                                                 key=f"{el['id']}_lmat")
+            el["liner_thickness_mm"] = lc2.number_input("Liner t (mm)", 0.1, 20.0,
+                                                        float(el.get("liner_thickness_mm", 1.0)), 0.5,
+                                                        key=f"{el['id']}_lt")
+    else:
+        el["lined"] = False
     import pandas as pd
     fl = el.get("fittings_list", []) or []
     df = pd.DataFrame(fl if fl else [], columns=["type", "qty"])
@@ -116,8 +145,13 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
         {"type": r["type"], "qty": int(r["qty"] or 0)}
         for r in edited.to_dict("records")
         if r.get("type") and (r.get("qty") or 0) > 0]
+    if el.get("pipe_type", "DN Pipe") == "Tubing" and el["fittings_list"]:
+        st.caption("⚠ L_e/D values are calibrated for standard pipe fittings. "
+                   "For Swagelok compression fittings use manufacturer Cv data — "
+                   "these values will overestimate losses.")
 
-    render_suggest_dn(el, inlet_p_bara)
+    if el.get("pipe_type", "DN Pipe") == "DN Pipe":
+        render_suggest_dn(el, inlet_p_bara)
 
 
 def _misc(el: dict) -> None:

@@ -1515,7 +1515,7 @@ def run_sensitivity(
                         current_P  = max(1e4, current_P)
                         continue
 
-                    D_seg     = PIPE_DATABASE[seg["dn"]][seg["pn"]]
+                    D_seg     = PIPE_DATABASE[seg["dn"]][seg["schedule"]]
                     lined     = seg.get("lined", False)
                     lthk_m    = seg.get("liner_thickness_mm", 1.0) / 1000.0
                     lmat      = seg.get("liner_material", "FEP")

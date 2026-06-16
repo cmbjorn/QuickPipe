@@ -80,7 +80,7 @@ def main():
         if err is not None:
             st.error(f"Calculation error: {err}")
         elif result is not None:
-            table.render(result)
+            table.render(result, active)
             regime_panel.render(result)
             with st.expander("Sketch", expanded=False):
                 sketch.render(result)

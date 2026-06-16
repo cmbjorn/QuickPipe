@@ -47,4 +47,4 @@ def render(active_line, active_result, all_results: dict) -> None:
             mime=_DOCX, width="stretch", key="rep_dl_proj")
 
     st.markdown("**Excel line list (this line)**")
-    excel.render(active_result, solver_meta)
+    excel.render(active_result, active_line, meta, solver_meta)

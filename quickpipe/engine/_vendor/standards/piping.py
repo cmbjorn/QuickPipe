@@ -2,44 +2,79 @@
 Piping standards lookup tables.
 
 Sources:
-    ASME B36.10M / B36.19M — pipe schedules and bore dimensions
+    ASME B36.19M-2004       — stainless steel pipe schedules and bore dimensions
     Crane TP-410            — material roughness, fitting Le/D factors
     ASME B16.5-2017         — pressure-temperature class ratings
 """
 
-# ── Pipe bore database (ANSI B36.10 / B36.19) ───────────────────────────────
-# Inner diameters in metres.
-#   PN20 / PN25  ≈  Schedule 40  (material-independent at the same schedule)
-#   PN40         ≈  Schedule 80
+# ── Pipe bore database — ASME B36.19M (stainless steel pipe) ─────────────────
+# Inner diameters in metres, derived from OD − 2 × wall thickness.
+# Schedule designations per ASME B36.19M:
+#   5S  — Extra-light; instrument/low-pressure service
+#   10S — Light-duty; low-pressure systems          (e.g. DN20: t = 2.11 mm)
+#   40S — Standard; general water/gas distribution  (e.g. DN20: t = 2.87 mm)
+#   80S — Heavy-duty; high-pressure fluid service   (e.g. DN20: t = 3.91 mm)
+#
+# OD (outside diameter, mm) per ASME B36.19M / B36.10M:
+#   DN15=21.34  DN20=26.67  DN25=33.40  DN32=42.16  DN40=48.26
+#   DN50=60.33  DN65=73.03  DN80=88.90  DN100=114.30 DN150=168.28
+#   DN200=219.08 DN250=273.05
 PIPE_DATABASE: dict[str, dict[str, float]] = {
-    "DN20":  {"PN20": 0.0209, "PN25": 0.0209, "PN40": 0.0189},
-    "DN25":  {"PN20": 0.0266, "PN25": 0.0266, "PN40": 0.0243},
-    "DN40":  {"PN20": 0.0409, "PN25": 0.0409, "PN40": 0.0381},
-    "DN50":  {"PN20": 0.0525, "PN25": 0.0525, "PN40": 0.0493},
-    "DN65":  {"PN20": 0.0627, "PN25": 0.0627, "PN40": 0.0590},
-    "DN80":  {"PN20": 0.0779, "PN25": 0.0779, "PN40": 0.0737},
-    "DN100": {"PN20": 0.1023, "PN25": 0.1023, "PN40": 0.0972},
-    "DN150": {"PN20": 0.1541, "PN25": 0.1541, "PN40": 0.1463},
-    "DN200": {"PN20": 0.2027, "PN25": 0.2027, "PN40": 0.1937},
-    "DN250": {"PN20": 0.2545, "PN25": 0.2545, "PN40": 0.2429},
+    # DN15  OD 21.34 mm
+    "DN15":  {"5S": 0.01804, "10S": 0.01712, "40S": 0.01580, "80S": 0.01388},
+    # DN20  OD 26.67 mm
+    "DN20":  {"5S": 0.02337, "10S": 0.02245, "40S": 0.02093, "80S": 0.01885},
+    # DN25  OD 33.40 mm
+    "DN25":  {"5S": 0.03010, "10S": 0.02786, "40S": 0.02664, "80S": 0.02430},
+    # DN32  OD 42.16 mm
+    "DN32":  {"5S": 0.03886, "10S": 0.03662, "40S": 0.03504, "80S": 0.03246},
+    # DN40  OD 48.26 mm
+    "DN40":  {"5S": 0.04496, "10S": 0.04272, "40S": 0.04090, "80S": 0.03810},
+    # DN50  OD 60.33 mm
+    "DN50":  {"5S": 0.05703, "10S": 0.05479, "40S": 0.05251, "80S": 0.04925},
+    # DN65  OD 73.03 mm
+    "DN65":  {"5S": 0.06881, "10S": 0.06693, "40S": 0.06271, "80S": 0.05901},
+    # DN80  OD 88.90 mm
+    "DN80":  {"5S": 0.08468, "10S": 0.08280, "40S": 0.07792, "80S": 0.07366},
+    # DN100 OD 114.30 mm
+    "DN100": {"5S": 0.11008, "10S": 0.10820, "40S": 0.10226, "80S": 0.09718},
+    # DN150 OD 168.28 mm
+    "DN150": {"5S": 0.16274, "10S": 0.16148, "40S": 0.15406, "80S": 0.14634},
+    # DN200 OD 219.08 mm
+    "DN200": {"5S": 0.21354, "10S": 0.21156, "40S": 0.20272, "80S": 0.19368},
+    # DN250 OD 273.05 mm
+    "DN250": {"5S": 0.26625, "10S": 0.26467, "40S": 0.25451, "80S": 0.24765},
+}
+
+# Nominal outside diameter (mm) per ASME B36.19M / B36.10M.
+PIPE_OD_MM: dict[str, float] = {
+    "DN15": 21.34, "DN20": 26.67, "DN25": 33.40, "DN32": 42.16,
+    "DN40": 48.26, "DN50": 60.33, "DN65": 73.03, "DN80": 88.90,
+    "DN100": 114.30, "DN150": 168.28, "DN200": 219.08, "DN250": 273.05,
+}
+
+# Human-readable schedule descriptions for UI tooltips.
+SCHEDULE_DESCRIPTIONS: dict[str, str] = {
+    "5S":  "Extra-light — instrument & low-pressure service",
+    "10S": "Light-duty — low-pressure systems",
+    "40S": "Standard — general water/gas distribution",
+    "80S": "Heavy-duty — high-pressure fluid service",
 }
 
 # ── Swagelok metric SS tubing (316/316L seamless, OD × wall → ID) ────────────
-# Inner diameters in metres.  Wall thicknesses per Swagelok catalog MS-01-140.
-# Sizes T18 and above are typical connector / inter-harp tubing.
+# Inner diameters in metres.  Source: Swagelok catalog MS-01-181 (metric sizes).
+# Ordering number pattern: SS-T{OD}M-S-{wall}M-6ME  (e.g. SS-T12M-S-2,0M-6ME)
 TUBING_DATABASE: dict[str, dict[str, float]] = {
-    "T6":  {"1.0 mm wall": 0.004},
-    "T8":  {"1.0 mm wall": 0.006},
-    "T10": {"1.0 mm wall": 0.008},
-    "T12": {"1.0 mm wall": 0.010},
-    "T14": {"1.5 mm wall": 0.011, "2.0 mm wall": 0.010},
-    "T16": {"1.5 mm wall": 0.013, "2.0 mm wall": 0.012},
-    "T18": {"1.5 mm wall": 0.015, "2.0 mm wall": 0.014},
-    "T20": {"1.5 mm wall": 0.017, "2.0 mm wall": 0.016},
-    "T25": {"1.5 mm wall": 0.022, "2.0 mm wall": 0.021},
-    "T28": {"1.5 mm wall": 0.025, "2.0 mm wall": 0.024},
-    "T32": {"2.0 mm wall": 0.028, "3.0 mm wall": 0.026},
-    "T38": {"2.0 mm wall": 0.034, "3.0 mm wall": 0.032},
+    "T3":  {"0.5 mm wall": 0.0020, "0.7 mm wall": 0.0016},
+    "T6":  {"1.0 mm wall": 0.0040, "1.5 mm wall": 0.0030},
+    "T8":  {"1.0 mm wall": 0.0060, "1.5 mm wall": 0.0050},
+    "T10": {"1.0 mm wall": 0.0080, "1.5 mm wall": 0.0070},
+    "T12": {"1.0 mm wall": 0.0100, "1.5 mm wall": 0.0090, "2.0 mm wall": 0.0080},
+    "T16": {"1.0 mm wall": 0.0140, "1.5 mm wall": 0.0130, "2.0 mm wall": 0.0120},
+    "T18": {"1.0 mm wall": 0.0160, "1.5 mm wall": 0.0150, "2.0 mm wall": 0.0140},
+    "T20": {"2.0 mm wall": 0.0160},
+    "T22": {"2.0 mm wall": 0.0180},
+    "T25": {"2.0 mm wall": 0.0210, "2.5 mm wall": 0.0200},
 }
 
 # Absolute roughness (m) for seamless drawn SS instrument tubing.

@@ -53,8 +53,11 @@ class Pipe:
     kind: str = "pipe"
     id: str = "p1"
     name: str = "Section"
+    pipe_type: str = "DN Pipe"             # "DN Pipe" | "Tubing"
     dn: str = "DN50"
-    pn: str = "PN40"
+    schedule: str = "40S"
+    tube_size: str = "T25"                 # used when pipe_type == "Tubing"
+    tube_wall: str = "2.0 mm wall"
     length_m: float = 10.0                 # run (horizontal) or height (vertical)
     orientation: str = "Horizontal"        # see ORIENTATIONS
     material: str = "SS316L"
@@ -113,7 +116,7 @@ def default_inlet() -> dict:
 def default_sections() -> list:
     return [
         element_to_dict(Pipe(
-            id="p1", name="Section 1", dn="DN50", pn="PN40",
+            id="p1", name="Section 1", dn="DN50", schedule="40S",
             length_m=20.0, orientation="Horizontal", material="SS316L",
             fittings_list=[{"type": "90° Standard Elbow", "qty": 2}])),
     ]

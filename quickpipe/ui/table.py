@@ -7,8 +7,13 @@ import pandas as pd
 from quickpipe.engine.results import COLUMNS
 
 
-def render(result) -> None:
-    st.subheader("Results")
+def render(result, line: dict | None = None) -> None:
+    tag = (line or {}).get("tag", "")
+    svc = (line or {}).get("service", "")
+    label = tag or "Results"
+    if svc:
+        label += f"  ·  {svc}"
+    st.subheader(label)
 
     # Line-list layout: one COLUMN per segment, properties as rows.
     records = [r.to_dict() for r in result.rows]
@@ -27,6 +32,10 @@ def render(result) -> None:
 
     def _style(_df):
         styles = pd.DataFrame("", index=_df.index, columns=_df.columns)
+        # Headline numbers: total ΔP and velocity in bold across all segments.
+        for rowname in ("ΔP (kPa)", "V (m/s)"):
+            if rowname in styles.index:
+                styles.loc[rowname] = "font-weight:bold"
         if "V/V_e" in raw.index:
             for c in raw.columns:
                 try:
@@ -40,7 +49,7 @@ def render(result) -> None:
         return styles
 
     st.dataframe(disp.style.apply(_style, axis=None), width="stretch",
-                 height=min(720, 60 + 36 * len(props)))
+                 height=min(1100, 60 + 36 * len(props)))
     st.caption("Each column is a segment (line-list format). Flow (m³/h) is in-situ "
                "(actual at local pressure). Red V/V_e > 1 (erosion), amber > 0.8.")
 
@@ -48,11 +57,11 @@ def render(result) -> None:
         st.warning(w)
 
 
-# Per-property display formats (strings pass through unformatted).
+# Per-property display formats — one decimal throughout (strings pass through).
 _FMT = {
-    "ID (mm)": "%.1f", "L (m)": "%.1f", "L_eff (m)": "%.2f", "Δz (m)": "%.1f",
-    "Flow (kg/h)": "%.1f", "Flow (m³/h)": "%.2f",
-    "P_in (bara)": "%.4f", "P_out (bara)": "%.4f",
-    "ΔP_fric (kPa)": "%.3f", "ΔP_grav (kPa)": "%.3f", "ΔP (kPa)": "%.3f",
-    "V (m/s)": "%.3f", "V_e (m/s)": "%.2f", "V/V_e": "%.3f",
+    "ID (mm)": "%.1f", "L (m)": "%.1f", "L_eff (m)": "%.1f", "Δz (m)": "%.1f",
+    "Flow (kg/h)": "%.1f", "Flow (m³/h)": "%.1f",
+    "P_in (bara)": "%.1f", "P_out (bara)": "%.1f",
+    "ΔP_fric (kPa)": "%.1f", "ΔP_fit (kPa)": "%.1f", "ΔP_grav (kPa)": "%.1f", "ΔP (kPa)": "%.1f",
+    "V (m/s)": "%.1f", "V/V_e": "%.1f",
 }
