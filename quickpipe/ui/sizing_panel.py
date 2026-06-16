@@ -114,11 +114,11 @@ def render_suggest_dn(pipe: dict, inlet_p_bara: float) -> None:
                 st.rerun()
         else:
             st.warning("No DN meets all criteria — relax the limits or split the flow.")
-        st.plotly_chart(_sweep_figure(out), width="stretch",
+        st.plotly_chart(_sweep_figure(out), use_container_width=True,
                         config={"displayModeBar": False},
                         key=f"{pipe['id']}_sweepfig")
         df = pd.DataFrame(_window(out["table"], rec))
-        st.dataframe(df, hide_index=True, width="stretch",
+        st.dataframe(df, hide_index=True, use_container_width=True,
                      column_config={
                          "V (m/s)": st.column_config.NumberColumn(format="%.2f"),
                          "V/V_e": st.column_config.NumberColumn(format="%.3f"),

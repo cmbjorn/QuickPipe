@@ -48,7 +48,11 @@ def render(result, line: dict | None = None) -> None:
                     styles.loc["V/V_e", c] = "background-color:#fef3c7"
         return styles
 
-    st.dataframe(disp.style.apply(_style, axis=None), width="stretch",
+    try:
+        styled = disp.style.apply(_style, axis=None)
+    except Exception:
+        styled = disp          # fall back to unstyled if Styler fails
+    st.dataframe(styled, use_container_width=True,
                  height=min(1100, 60 + 36 * len(props)))
     st.caption("Each column is a segment (line-list format). Flow (m³/h) is in-situ "
                "(actual at local pressure). Red V/V_e > 1 (erosion), amber > 0.8.")

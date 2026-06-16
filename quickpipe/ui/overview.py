@@ -35,7 +35,7 @@ def render(all_results: dict) -> None:
 
     active_idx = next((i for i, ln in enumerate(lns) if ln["id"] == state.active_id()), 0)
     ev = st.dataframe(
-        df, hide_index=True, width="stretch",
+        df, hide_index=True, use_container_width=True,
         on_select="rerun", selection_mode="single-row", key="qp_overview",
         column_config={
             "Inlet (bara)": st.column_config.NumberColumn(format="%.3f"),
