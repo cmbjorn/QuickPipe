@@ -13,7 +13,10 @@ from plotly.subplots import make_subplots
 
 # DN → line width (px), mirrors the FlowBench schematic.
 _DN_LW = {"DN20": 2, "DN25": 3, "DN40": 5, "DN50": 7, "DN65": 8, "DN80": 9,
-          "DN100": 11, "DN150": 15, "DN200": 19, "DN250": 23}
+          "DN100": 11, "DN150": 15, "DN200": 19, "DN250": 23,
+          # Tubing: scale roughly with OD (mm / 8, min 1)
+          "T3": 1, "T6": 1, "T8": 1, "T10": 2, "T12": 2,
+          "T16": 2, "T18": 2, "T20": 3, "T22": 3, "T25": 3}
 _MISC_C = "#64748b"
 
 

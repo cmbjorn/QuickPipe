@@ -203,7 +203,7 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
             # Lining only applies to (and is only bored into) DN pipe, not tubing.
             _lining = (f"{el.liner_material} {el.liner_thickness_mm:.1f} mm"
                        if el.lined and not _is_tube else "—")
-            _material = el.material if not _is_tube else "—"
+            _material = el.material
             _schedule = el.schedule if not _is_tube else "—"
             row = QuickpipeRow(
                 element=el.name, type="Pipe", pipe=_pipe_label,
