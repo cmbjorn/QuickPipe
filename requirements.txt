@@ -12,3 +12,4 @@ fluids>=1.0.0
 openpyxl>=3.1.0          # Excel line-list export
 python-docx>=1.0.0       # Word hydraulic report
 matplotlib>=3.7.0        # report charts (pure Python — no headless browser needed)
+lxml>=4.9.0              # optional but speeds up python-docx XML parsing
