@@ -91,7 +91,7 @@ def render_suggest_dn(pipe: dict, inlet_p_bara: float) -> None:
         crit = SizingCriteria(v_min=v_min, v_max=v_max, dp_per_100m_max=dp_max)
         out = suggest_dn(
             fluid, inlet_p_bara * 1e5, T_C,
-            schedule=pipe.get("schedule", "40S"), material=pipe.get("material", "SS316L"),
+            pn_class=pipe.get("pn_class", "PN16"), material=pipe.get("material", "SS316L"),
             lined=pipe.get("lined", False),
             liner_material=pipe.get("liner_material", "PTFE"),
             liner_thickness_mm=pipe.get("liner_thickness_mm", 1.0),

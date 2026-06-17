@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import multiphase_engine as _E
 from standards.piping import (
-    PIPE_DATABASE, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, sum_le_fit)
+    EN_PIPE_OD_MM, en_pipe_id_m, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, sum_le_fit)
 
 from .fluids import props_at
 from .march import _insitu_density, G
@@ -24,7 +24,7 @@ class SizingCriteria:
     erosion_C: float = 100.0        # API RP 14E constant
 
 
-def suggest_dn(fluid, P_pa, T_C, *, schedule="40S", material="SS316L",
+def suggest_dn(fluid, P_pa, T_C, *, pn_class="PN16", material="SS316L",
                lined=False, liner_material="PTFE", liner_thickness_mm=1.0,
                length_m=100.0, dz_m=0.0, fittings_list=None,
                correlation="Beggs-Brill", voidage_method="Homogeneous",
@@ -33,13 +33,12 @@ def suggest_dn(fluid, P_pa, T_C, *, schedule="40S", material="SS316L",
     criteria = criteria or SizingCriteria()
     props = props_at(fluid, P_pa, T_C)
     fittings_list = fittings_list or []
+    dn_list = list(EN_PIPE_OD_MM.get(material, EN_PIPE_OD_MM["SS316L"]).keys())
 
     table = []
     recommended = None
-    for dn in PIPE_DATABASE:
-        if schedule not in PIPE_DATABASE[dn]:
-            continue
-        D = PIPE_DATABASE[dn][schedule]
+    for dn in dn_list:
+        D = en_pipe_id_m(material, pn_class, dn)
         if lined:
             D_eff = D - 2.0 * liner_thickness_mm / 1000.0
             rough = LINER_ROUGHNESS[liner_material]

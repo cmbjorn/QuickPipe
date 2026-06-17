@@ -2,90 +2,135 @@
 Piping standards lookup tables.
 
 Sources:
-    ASME B36.19M-2004       — stainless steel pipe schedules and bore dimensions
-    Crane TP-410            — material roughness, fitting Le/D factors
-    ASME B16.5-2017         — pressure-temperature class ratings
+    EN 10220:2002 / EN ISO 1127    — European pipe ODs and wall thickness basis
+    EN 10216-2 / EN 10217-2        — Carbon steel seamless/welded pipe
+    EN 10216-5 / EN 10217-7        — Stainless steel seamless/welded pipe
+    Swagelok MS-01-181 (metric)    — 316SS instrument tubing
+    Crane TP-410                   — material roughness, fitting Le/D factors
+    ASME B16.5-2017                — pressure-temperature class ratings
 """
 
-# ── Pipe bore database — ASME B36.19M (stainless steel pipe) ─────────────────
-# Inner diameters in metres, derived from OD − 2 × wall thickness.
-# Schedule designations per ASME B36.19M:
-#   5S  — Extra-light; instrument/low-pressure service
-#   10S — Light-duty; low-pressure systems          (e.g. DN20: t = 2.11 mm)
-#   40S — Standard; general water/gas distribution  (e.g. DN20: t = 2.87 mm)
-#   80S — Heavy-duty; high-pressure fluid service   (e.g. DN20: t = 3.91 mm)
-#
-# OD (outside diameter, mm) per ASME B36.19M / B36.10M:
-#   DN15=21.34  DN20=26.67  DN25=33.40  DN32=42.16  DN40=48.26
-#   DN50=60.33  DN65=73.03  DN80=88.90  DN100=114.30 DN150=168.28
-#   DN200=219.08 DN250=273.05
-PIPE_DATABASE: dict[str, dict[str, float]] = {
-    # DN15  OD 21.34 mm
-    "DN15":  {"5S": 0.01804, "10S": 0.01712, "40S": 0.01580, "80S": 0.01388},
-    # DN20  OD 26.67 mm
-    "DN20":  {"5S": 0.02337, "10S": 0.02245, "40S": 0.02093, "80S": 0.01885},
-    # DN25  OD 33.40 mm
-    "DN25":  {"5S": 0.03010, "10S": 0.02786, "40S": 0.02664, "80S": 0.02430},
-    # DN32  OD 42.16 mm
-    "DN32":  {"5S": 0.03886, "10S": 0.03662, "40S": 0.03504, "80S": 0.03246},
-    # DN40  OD 48.26 mm
-    "DN40":  {"5S": 0.04496, "10S": 0.04272, "40S": 0.04090, "80S": 0.03810},
-    # DN50  OD 60.33 mm
-    "DN50":  {"5S": 0.05703, "10S": 0.05479, "40S": 0.05251, "80S": 0.04925},
-    # DN65  OD 73.03 mm
-    "DN65":  {"5S": 0.06881, "10S": 0.06693, "40S": 0.06271, "80S": 0.05901},
-    # DN80  OD 88.90 mm
-    "DN80":  {"5S": 0.08468, "10S": 0.08280, "40S": 0.07792, "80S": 0.07366},
-    # DN100 OD 114.30 mm
-    "DN100": {"5S": 0.11008, "10S": 0.10820, "40S": 0.10226, "80S": 0.09718},
-    # DN150 OD 168.28 mm
-    "DN150": {"5S": 0.16274, "10S": 0.16148, "40S": 0.15406, "80S": 0.14634},
-    # DN200 OD 219.08 mm
-    "DN200": {"5S": 0.21354, "10S": 0.21156, "40S": 0.20272, "80S": 0.19368},
-    # DN250 OD 273.05 mm
-    "DN250": {"5S": 0.26625, "10S": 0.26467, "40S": 0.25451, "80S": 0.24765},
+# ── EN Pipe OD table (EN 10220 Series 1 / EN ISO 1127) ───────────────────────
+# Outside diameters in mm.
+# CS  runs DN15 – DN300 (EN 10220 Series 1).
+# SS316L runs DN15 – DN200 (EN ISO 1127 / EN 10220).
+EN_PIPE_OD_MM: dict[str, dict[str, float]] = {
+    "CS": {
+        "DN15":  21.3,  "DN20":  26.9,  "DN25":  33.7,  "DN32":  42.4,
+        "DN40":  48.3,  "DN50":  60.3,  "DN65":  76.1,  "DN80":  88.9,
+        "DN100": 114.3, "DN125": 139.7, "DN150": 168.3,
+        "DN200": 219.1, "DN250": 273.0, "DN300": 323.9,
+    },
+    "SS316L": {
+        "DN15":  21.3,  "DN20":  26.9,  "DN25":  33.7,  "DN32":  42.4,
+        "DN40":  48.3,  "DN50":  60.3,  "DN65":  76.1,  "DN80":  88.9,
+        "DN100": 114.3, "DN125": 139.7, "DN150": 168.3, "DN200": 219.1,
+    },
 }
 
-# Nominal outside diameter (mm) per ASME B36.19M / B36.10M.
-PIPE_OD_MM: dict[str, float] = {
-    "DN15": 21.34, "DN20": 26.67, "DN25": 33.40, "DN32": 42.16,
-    "DN40": 48.26, "DN50": 60.33, "DN65": 73.03, "DN80": 88.90,
-    "DN100": 114.30, "DN150": 168.28, "DN200": 219.08, "DN250": 273.05,
+# ── EN Pipe wall thickness lookup table (project piping class) ────────────────
+# Wall thickness in mm for [material][pn_class][dn].
+# Basis:
+#   CS      — EN 10220 Series 1 ODs; wall selected from corrosion-allowance-driven
+#             process piping practice (1.0 mm CA, EN 10216-2/EN 10217-2 delivery).
+#   SS316L  — EN ISO 1127 Series ODs; wall from EN ISO 1127 (zero corrosion allowance,
+#             EN 10216-5/EN 10217-7 delivery).
+# PN class applies to the piping class (flanges, fittings, valves per EN 1092-1).
+# PN alone does NOT define pipe wall thickness — this table is a project lookup.
+# Use wall override for project-specific piping class requirements.
+EN_PIPE_WALL_MM: dict[str, dict[str, dict[str, float]]] = {
+    "CS": {
+        "PN16": {
+            "DN15":  2.6, "DN20":  2.6, "DN25":  2.9, "DN32":  2.9,
+            "DN40":  2.9, "DN50":  3.2, "DN65":  3.2, "DN80":  3.6,
+            "DN100": 4.0, "DN125": 4.0, "DN150": 4.5,
+            "DN200": 5.0, "DN250": 5.6, "DN300": 6.3,
+        },
+        "PN40": {
+            "DN15":  3.2, "DN20":  3.2, "DN25":  4.0, "DN32":  4.0,
+            "DN40":  4.0, "DN50":  5.0, "DN65":  5.0, "DN80":  5.6,
+            "DN100": 6.3, "DN125": 6.3, "DN150": 7.1,
+            "DN200": 8.0, "DN250": 8.8, "DN300": 10.0,
+        },
+    },
+    "SS316L": {
+        "PN16": {
+            "DN15":  1.6, "DN20":  1.6, "DN25":  1.6, "DN32":  1.6,
+            "DN40":  1.6, "DN50":  2.0, "DN65":  2.0, "DN80":  2.0,
+            "DN100": 2.0, "DN125": 2.0, "DN150": 2.0, "DN200": 3.2,
+        },
+        "PN40": {
+            "DN15":  2.0, "DN20":  2.0, "DN25":  2.6, "DN32":  2.6,
+            "DN40":  2.6, "DN50":  3.2, "DN65":  3.2, "DN80":  3.2,
+            "DN100": 4.0, "DN125": 4.0, "DN150": 4.0, "DN200": 5.0,
+        },
+    },
 }
 
-# Human-readable schedule descriptions for UI tooltips.
-SCHEDULE_DESCRIPTIONS: dict[str, str] = {
-    "5S":  "Extra-light — instrument & low-pressure service",
-    "10S": "Light-duty — low-pressure systems",
-    "40S": "Standard — general water/gas distribution",
-    "80S": "Heavy-duty — high-pressure fluid service",
+# PN class label descriptions for UI.
+PN_DESCRIPTIONS: dict[str, str] = {
+    "PN16": "PN16 — 16 bar rated system (flanges, fittings, valves per EN 1092-1)",
+    "PN40": "PN40 — 40 bar rated system (flanges, fittings, valves per EN 1092-1)",
 }
 
-# ── Swagelok metric SS tubing (316/316L seamless, OD × wall → ID) ────────────
-# Inner diameters in metres.  Source: Swagelok catalog MS-01-181 (metric sizes).
-# Ordering number pattern: SS-T{OD}M-S-{wall}M-6ME  (e.g. SS-T12M-S-2,0M-6ME)
-TUBING_DATABASE: dict[str, dict[str, float]] = {
-    "T3":  {"0.5 mm wall": 0.0020, "0.7 mm wall": 0.0016},
-    "T6":  {"1.0 mm wall": 0.0040, "1.5 mm wall": 0.0030},
-    "T8":  {"1.0 mm wall": 0.0060, "1.5 mm wall": 0.0050},
-    "T10": {"1.0 mm wall": 0.0080, "1.5 mm wall": 0.0070},
-    "T12": {"1.0 mm wall": 0.0100, "1.5 mm wall": 0.0090, "2.0 mm wall": 0.0080},
-    "T16": {"1.0 mm wall": 0.0140, "1.5 mm wall": 0.0130, "2.0 mm wall": 0.0120},
-    "T18": {"1.0 mm wall": 0.0160, "1.5 mm wall": 0.0150, "2.0 mm wall": 0.0140},
-    "T20": {"2.0 mm wall": 0.0160},
-    "T22": {"2.0 mm wall": 0.0180},
-    "T25": {"2.0 mm wall": 0.0210, "2.5 mm wall": 0.0200},
+# ── 316SS metric tubing (Swagelok-style, OD × wall → metadata) ───────────────
+# Keys: tube OD in mm (int-like str for legacy compat), then wall label.
+# Inner dict: id_m (inner diameter, metres), order (Swagelok part number),
+#             weight_kg_m (kg per metre), wp_bar (working pressure, bar), note.
+# Pressure basis: ASME B31.3/B31.1, stress 137.8 MPa, tensile 516.4 MPa.
+TUBING_DATABASE: dict[str, dict[str, dict]] = {
+    "T3": {
+        "0.5 mm wall": {"id_m": 0.0020, "order": "SS-T3M-S-0,5M-6ME",  "weight_kg_m": 0.021, "wp_bar": 330, "note": "Not recommended for use with Swagelok tube fittings."},
+        "0.7 mm wall": {"id_m": 0.0016, "order": "SS-T3M-S-0,7M-6ME",  "weight_kg_m": 0.027, "wp_bar": 560, "note": ""},
+    },
+    "T6": {
+        "1.0 mm wall": {"id_m": 0.0040, "order": "SS-T6M-S-1,0M-6ME",  "weight_kg_m": 0.125, "wp_bar": 420, "note": ""},
+        "1.5 mm wall": {"id_m": 0.0030, "order": "SS-T6M-S-1,5M-6ME",  "weight_kg_m": 0.169, "wp_bar": 710, "note": ""},
+    },
+    "T8": {
+        "1.0 mm wall": {"id_m": 0.0060, "order": "SS-T8M-S-1,0M-6ME",  "weight_kg_m": 0.175, "wp_bar": 310, "note": ""},
+        "1.5 mm wall": {"id_m": 0.0050, "order": "SS-T8M-S-1,5M-6ME",  "weight_kg_m": 0.244, "wp_bar": 520, "note": ""},
+    },
+    "T10": {
+        "1.0 mm wall": {"id_m": 0.0080, "order": "SS-T10M-S-1,0M-6ME", "weight_kg_m": 0.225, "wp_bar": 240, "note": ""},
+        "1.5 mm wall": {"id_m": 0.0070, "order": "SS-T10M-S-1,5M-6ME", "weight_kg_m": 0.319, "wp_bar": 400, "note": ""},
+    },
+    "T12": {
+        "1.0 mm wall": {"id_m": 0.0100, "order": "SS-T12M-S-1,0M-6ME", "weight_kg_m": 0.275, "wp_bar": 200, "note": ""},
+        "1.5 mm wall": {"id_m": 0.0090, "order": "SS-T12M-S-1,5M-6ME", "weight_kg_m": 0.394, "wp_bar": 330, "note": ""},
+        "2.0 mm wall": {"id_m": 0.0080, "order": "SS-T12M-S-2,0M-6ME", "weight_kg_m": 0.500, "wp_bar": 470, "note": ""},
+    },
+    "T16": {
+        "1.0 mm wall": {"id_m": 0.0140, "order": "SS-T16M-S-1,0M-6ME", "weight_kg_m": 0.375, "wp_bar": 140, "note": "Not recommended for use with Swagelok tube fittings."},
+        "1.5 mm wall": {"id_m": 0.0130, "order": "SS-T16M-S-1,5M-6ME", "weight_kg_m": 0.507, "wp_bar": 230, "note": ""},
+        "2.0 mm wall": {"id_m": 0.0120, "order": "SS-T16M-S-2,0M-6ME", "weight_kg_m": 0.651, "wp_bar": 330, "note": ""},
+    },
+    "T18": {
+        "1.0 mm wall": {"id_m": 0.0160, "order": "SS-T18M-S-1,0M-6ME", "weight_kg_m": 0.425, "wp_bar": 120, "note": "Not recommended for use with Swagelok tube fittings."},
+        "1.5 mm wall": {"id_m": 0.0150, "order": "SS-T18M-S-1,5M-6ME", "weight_kg_m": 0.619, "wp_bar": 200, "note": ""},
+        "2.0 mm wall": {"id_m": 0.0140, "order": "SS-T18M-S-2,0M-6ME", "weight_kg_m": 0.801, "wp_bar": 290, "note": ""},
+    },
+    "T20": {
+        "2.0 mm wall": {"id_m": 0.0160, "order": "SS-T20M-S-2,0M-6ME", "weight_kg_m": 0.901, "wp_bar": 260, "note": ""},
+    },
+    "T22": {
+        "2.0 mm wall": {"id_m": 0.0180, "order": "SS-T22M-S-2,0M-6ME", "weight_kg_m": 1.00,  "wp_bar": 230, "note": ""},
+    },
+    "T25": {
+        "2.0 mm wall": {"id_m": 0.0210, "order": "SS-T25M-S-2,0M-6ME", "weight_kg_m": 1.15,  "wp_bar": 200, "note": "Not recommended for use with Swagelok tube fittings in gas service."},
+        "2.5 mm wall": {"id_m": 0.0200, "order": "SS-T25M-S-2,5M-6ME", "weight_kg_m": 1.41,  "wp_bar": 260, "note": ""},
+    },
 }
 
 # Absolute roughness (m) for seamless drawn SS instrument tubing.
-# Swagelok SS-T catalog: Ra ≤ 0.8 µm → ε ≈ 1.5 µm (approx. 10× smoother than pipe).
 TUBING_ROUGHNESS: float = 1.5e-6
 
 # ── Absolute roughness (m) — Crane TP-410 / ASHRAE ──────────────────────────
 MATERIAL_ROUGHNESS: dict[str, float] = {
     "SS316L":            1.5e-5,
+    "CS":                4.6e-5,   # carbon steel (EN 10216-2 / EN 10217-2)
+    "Carbon Steel":      4.6e-5,   # legacy alias
     "Duplex SS 2205":    1.5e-5,
-    "Carbon Steel":      4.6e-5,
     "Hastelloy C-276":   1.5e-5,
     "Titanium Gr. 2":    1.5e-5,
 }
@@ -198,7 +243,6 @@ def ansi_class_lookup(P_design_barg: float, material_group: str) -> dict:
 
 
 # ── Minimum ASME B16.5 flange class for PSV inlet (Group 1.1 CS at 38 °C) ──
-# Class 300 is the industry minimum per API 526 practice.
 _CLASS_LIMITS_BARA: list[tuple[int, float]] = [
     (300,   51.1),
     (600,  102.1),
@@ -236,3 +280,20 @@ def sum_le_fit(seg: dict, D_eff: float) -> float:
     if f in FITTING_Le_over_D and c > 0:
         return FITTING_Le_over_D[f] * D_eff * c
     return 0.0
+
+
+def en_pipe_id_m(material: str, pn_class: str, dn: str,
+                 wall_override: bool = False,
+                 wall_override_mm: float = 0.0) -> float:
+    """Return the EN pipe internal diameter in metres.
+
+    Looks up OD from EN_PIPE_OD_MM and wall from EN_PIPE_WALL_MM, then
+    computes ID = OD − 2 × wall.  If wall_override is True, uses
+    wall_override_mm instead of the table value.
+    """
+    od_mm  = EN_PIPE_OD_MM[material][dn]
+    if wall_override:
+        wall_mm = wall_override_mm
+    else:
+        wall_mm = EN_PIPE_WALL_MM[material][pn_class][dn]
+    return (od_mm - 2.0 * wall_mm) / 1000.0

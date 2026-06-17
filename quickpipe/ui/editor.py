@@ -80,14 +80,24 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
 
     el["name"] = st.text_input("Name", el.get("name", "Section"), key=f"{el['id']}_nm")
 
-    pipe_type = st.radio(
-        "Type", state.PIPE_TYPES,
-        index=_idx(state.PIPE_TYPES, el.get("pipe_type", "DN Pipe")),
+    # Piping type selector — sets both pipe_type and material together
+    _PIPING_LABELS = {
+        ("DN Pipe", "CS"):     "EN Pipe - Carbon Steel",
+        ("DN Pipe", "SS316L"): "EN Pipe - SS316L",
+        ("Tubing",  "SS316L"): "316SS Metric Tubing",
+    }
+    _PIPING_FROM_LABEL = {v: k for k, v in _PIPING_LABELS.items()}
+    cur_label = _PIPING_LABELS.get(
+        (el.get("pipe_type", "DN Pipe"), el.get("material", "SS316L")), "EN Pipe - SS316L")
+    piping_label = st.radio("Piping type", state.PIPE_TYPES,
+        index=_idx(state.PIPE_TYPES, cur_label),
         horizontal=True, key=f"{el['id']}_ptype")
-    el["pipe_type"] = pipe_type
+    pipe_type_raw, mat_raw = _PIPING_FROM_LABEL.get(piping_label, ("DN Pipe", "SS316L"))
+    el["pipe_type"] = pipe_type_raw
+    el["material"] = mat_raw
 
-    c1, c2 = st.columns(2)
-    if pipe_type == "Tubing":
+    if pipe_type_raw == "Tubing":
+        c1, c2 = st.columns(2)
         tube_size = el.get("tube_size", "T25")
         el["tube_size"] = c1.selectbox("Tube size (OD)", state.TUBE_LIST,
                                        index=_idx(state.TUBE_LIST, tube_size),
@@ -97,18 +107,36 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
         el["tube_wall"] = c2.selectbox("Wall thickness", walls,
                                        index=_idx(walls, cur_wall),
                                        key=f"{el['id']}_tw")
+        _tdata = state.TUBING_DATABASE.get(el["tube_size"], {}).get(el["tube_wall"], {})
+        if _tdata:
+            _id_mm_t = _tdata.get("id_m", 0.0) * 1000
+            c2.caption(f"ID = {_id_mm_t:.1f} mm  ·  {_tdata.get('weight_kg_m', 0):.3f} kg/m"
+                       f"  ·  WP = {_tdata.get('wp_bar', 0)} bar")
     else:
-        el["dn"] = c1.selectbox("DN", state.DN_LIST,
-                                index=_idx(state.DN_LIST, el.get("dn", "DN50")),
+        dn_list = state.CS_DN_LIST if mat_raw == "CS" else state.SS316L_DN_LIST
+        if el.get("dn") not in dn_list:
+            el["dn"] = "DN50"
+        c1, c2 = st.columns(2)
+        el["dn"] = c1.selectbox("DN", dn_list,
+                                index=_idx(dn_list, el.get("dn", "DN50")),
                                 key=f"{el['id']}_dn")
-        el["schedule"] = c2.selectbox("Schedule (ASME B36.19M)", state.SCHEDULE_LIST,
-                                      index=_idx(state.SCHEDULE_LIST, el.get("schedule", "40S")),
-                                      key=f"{el['id']}_sched")
-        _od = state.PIPE_OD_MM.get(el.get("dn", "DN50"))
-        _id_m = state.PIPE_DATABASE.get(el.get("dn", "DN50"), {}).get(el.get("schedule", "40S"))
-        if _od and _id_m:
-            _t = (_od - _id_m * 1000) / 2
-            c2.caption(f"t = {_t:.2f} mm  ·  {state.SCHEDULE_DESCRIPTIONS.get(el['schedule'], '')}")
+        el["pn_class"] = c2.selectbox("Pressure class", state.PN_LIST,
+                                      index=_idx(state.PN_LIST, el.get("pn_class", "PN16")),
+                                      key=f"{el['id']}_pn")
+        _od = state.EN_PIPE_OD_MM.get(mat_raw, {}).get(el["dn"], 0.0)
+        _wall_tbl = state.EN_PIPE_WALL_MM.get(mat_raw, {}).get(el["pn_class"], {}).get(el["dn"], 0.0)
+        el["wall_override"] = st.checkbox("Override wall thickness",
+            bool(el.get("wall_override", False)), key=f"{el['id']}_wo")
+        if el["wall_override"]:
+            el["wall_override_mm"] = st.number_input("Wall (mm)", 0.5, 50.0,
+                float(el.get("wall_override_mm") or _wall_tbl or 3.2), 0.1,
+                key=f"{el['id']}_wmm")
+            _wall_used = el["wall_override_mm"]
+        else:
+            _wall_used = _wall_tbl
+        _id_mm_dn = (_od - 2.0 * _wall_used) if _od > 0 and _wall_used > 0 else 0.0
+        st.caption(f"OD = {_od:.1f} mm  ·  t = {_wall_used:.1f} mm"
+                   f"  ·  ID = {_id_mm_dn:.1f} mm  ·  {state.PN_DESCRIPTIONS.get(el['pn_class'], '')}")
     c3, c4 = st.columns(2)
     el["length_m"] = c3.number_input("Length / height (m)", 0.0, 1e5,
                                      float(el.get("length_m", 10.0)), 1.0, key=f"{el['id']}_L",
@@ -117,10 +145,7 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
         "Orientation", state.ORIENTATIONS,
         index=_idx(state.ORIENTATIONS, el.get("orientation", "Horizontal")),
         key=f"{el['id']}_or")
-    if pipe_type == "DN Pipe":
-        el["material"] = st.selectbox("Material", state.MATERIALS,
-                                      index=_idx(state.MATERIALS, el.get("material", "SS316L")),
-                                      key=f"{el['id']}_mat")
+    if pipe_type_raw == "DN Pipe":
         el["lined"] = st.checkbox("Lined", bool(el.get("lined", False)), key=f"{el['id']}_lined")
         if el["lined"]:
             lc1, lc2 = st.columns(2)
@@ -145,12 +170,12 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
         {"type": r["type"], "qty": int(r["qty"] or 0)}
         for r in edited.to_dict("records")
         if r.get("type") and (r.get("qty") or 0) > 0]
-    if el.get("pipe_type", "DN Pipe") == "Tubing" and el["fittings_list"]:
+    if pipe_type_raw == "Tubing" and el["fittings_list"]:
         st.caption("⚠ L_e/D values are calibrated for standard pipe fittings. "
                    "For Swagelok compression fittings use manufacturer Cv data — "
                    "these values will overestimate losses.")
 
-    if el.get("pipe_type", "DN Pipe") == "DN Pipe":
+    if pipe_type_raw == "DN Pipe":
         render_suggest_dn(el, inlet_p_bara)
 
 

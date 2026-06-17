@@ -53,7 +53,7 @@ _FLASH_CACHE: dict[tuple, object] = {}
 # 1. INDUSTRIAL STANDARDS DATABASE
 # ============================================================================
 from standards.piping import (
-    PIPE_DATABASE, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, FITTING_Le_over_D
+    en_pipe_id_m, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, FITTING_Le_over_D
 )
 
 
@@ -1515,7 +1515,8 @@ def run_sensitivity(
                         current_P  = max(1e4, current_P)
                         continue
 
-                    D_seg     = PIPE_DATABASE[seg["dn"]][seg["schedule"]]
+                    D_seg     = en_pipe_id_m(seg.get("material", "SS316L"),
+                                            seg.get("pn_class", "PN16"), seg["dn"])
                     lined     = seg.get("lined", False)
                     lthk_m    = seg.get("liner_thickness_mm", 1.0) / 1000.0
                     lmat      = seg.get("liner_material", "FEP")

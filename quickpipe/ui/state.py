@@ -17,20 +17,21 @@ import streamlit as st
 import quickpipe.engine as _engine  # noqa: F401  (runs sys.path bootstrap)
 import multiphase_engine as _E
 from standards.piping import (
-    PIPE_DATABASE, PIPE_OD_MM, SCHEDULE_DESCRIPTIONS,
+    EN_PIPE_OD_MM, EN_PIPE_WALL_MM, PN_DESCRIPTIONS,
     TUBING_DATABASE, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, FITTING_Le_over_D)
 
 from quickpipe.engine.elements import (
     Pipe, Misc, default_inlet, element_to_dict, ORIENTATIONS)
 
 # ── Picker option lists ──────────────────────────────────────────────────────
-DN_LIST = list(PIPE_DATABASE.keys())
-SCHEDULE_LIST = ["5S", "10S", "40S", "80S"]
+CS_DN_LIST = list(EN_PIPE_OD_MM["CS"].keys())
+SS316L_DN_LIST = list(EN_PIPE_OD_MM["SS316L"].keys())
+PN_LIST = list(PN_DESCRIPTIONS.keys())
 TUBE_LIST = list(TUBING_DATABASE.keys())
 MATERIALS = list(MATERIAL_ROUGHNESS.keys())
 LINERS = list(LINER_ROUGHNESS.keys())
 FITTINGS = list(FITTING_Le_over_D.keys())
-PIPE_TYPES = ["DN Pipe", "Tubing"]
+PIPE_TYPES = ["EN Pipe - Carbon Steel", "EN Pipe - SS316L", "316SS Metric Tubing"]
 
 
 def tube_walls(tube_size: str) -> list[str]:
@@ -56,7 +57,7 @@ def _next_id(prefix: str) -> str:
 
 def _default_section() -> dict:
     return element_to_dict(Pipe(
-        id=_next_id("p"), name="Section 1", dn="DN50", schedule="40S",
+        id=_next_id("p"), name="Section 1", dn="DN50", pn_class="PN16",
         length_m=20.0, orientation="Horizontal", material="SS316L",
         fittings_list=[{"type": "90° Standard Elbow", "qty": 2}]))
 

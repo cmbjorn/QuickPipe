@@ -55,12 +55,14 @@ class Pipe:
     name: str = "Section"
     pipe_type: str = "DN Pipe"             # "DN Pipe" | "Tubing"
     dn: str = "DN50"
-    schedule: str = "40S"
+    pn_class: str = "PN16"                 # "PN16" | "PN40"
+    wall_override: bool = False            # True → use wall_override_mm instead of table
+    wall_override_mm: float = 3.2          # used when wall_override is True
     tube_size: str = "T25"                 # used when pipe_type == "Tubing"
     tube_wall: str = "2.0 mm wall"
     length_m: float = 10.0                 # run (horizontal) or height (vertical)
     orientation: str = "Horizontal"        # see ORIENTATIONS
-    material: str = "SS316L"
+    material: str = "SS316L"               # "SS316L" | "CS"
     lined: bool = False
     liner_material: str = "PTFE"
     liner_thickness_mm: float = 1.0
@@ -116,7 +118,7 @@ def default_inlet() -> dict:
 def default_sections() -> list:
     return [
         element_to_dict(Pipe(
-            id="p1", name="Section 1", dn="DN50", schedule="40S",
+            id="p1", name="Section 1", dn="DN50", pn_class="PN16",
             length_m=20.0, orientation="Horizontal", material="SS316L",
             fittings_list=[{"type": "90° Standard Elbow", "qty": 2}])),
     ]
