@@ -15,7 +15,7 @@ from standards.piping import (
     EN_PIPE_OD_MM, EN_PIPE_WALL_MM, TUBING_DATABASE, en_pipe_id_m)
 from standards.pressure_rating import (
     allowable_stress_mpa, t_pressure_min_mm, pressure_rating_barg,
-    recommend_wall, EN_ISO_1127_WALLS)
+    recommend_wall, EN_ISO_1127_WALLS, _ISO_1127_SERIE1)
 from physics.friction import churchill_f
 
 _PASS = "\033[92mPASS\033[0m"
@@ -241,6 +241,16 @@ rCA = recommend_wall("CS", "DN100", EN_PIPE_OD_MM["CS"]["DN100"], 40.0, 150.0, c
 rNoCA = recommend_wall("CS", "DN100", EN_PIPE_OD_MM["CS"]["DN100"], 40.0, 150.0, corrosion_allow_mm=0.0)
 check("corrosion allowance increases required wall", rCA["t_required_mm"] > rNoCA["t_required_mm"],
       f"CA={rCA['t_required_mm']:.2f} vs noCA={rNoCA['t_required_mm']:.2f} mm")
+# Ladder floor must equal the lightest real ISO 1127 Serie-1 wall (catalogue cross-check)
+floor_errs = [f"{dn}: floor {EN_ISO_1127_WALLS[dn][0]} ≠ Serie1 min {min(s1)}"
+              for dn, s1 in _ISO_1127_SERIE1.items()
+              if abs(EN_ISO_1127_WALLS[dn][0] - min(s1)) > 1e-9]
+check("ladder floor = lightest ISO 1127 Serie-1 wall", not floor_errs,
+      ", ".join(floor_errs) if floor_errs else "all DN floors match catalogue")
+# Every ladder must be strictly ascending (snap-up relies on it)
+asc_errs = [dn for dn, ws in EN_ISO_1127_WALLS.items()
+            if any(ws[i] >= ws[i+1] for i in range(len(ws)-1))]
+check("wall ladders strictly ascending", not asc_errs, ", ".join(asc_errs))
 
 print()
 print(f"\033[92mAll smoke tests passed.\033[0m" if _n_fail == 0

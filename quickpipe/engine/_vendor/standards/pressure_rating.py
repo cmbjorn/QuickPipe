@@ -50,26 +50,47 @@ _CS_RP02: dict[int, float] = {
 }
 _CS_RM = 360.0  # P235GH tensile strength Rm (MPa), minimum
 
-# ── EN ISO 1127 / EN 10220 standard wall ladder per DN (mm) ───────────────────
-# Real, orderable walls drawn from the EN ISO 1127 / EN 10220 preferred series
-# (ISO 4200). Each DN spans from a light structural wall (the floor) up to a
-# heavy wall, so the recommendation can climb with pressure and always lands on
-# a wall that actually exists. SS316L and CS share this OD/wall grid.
+# ── EN ISO 1127 light Serie-1 stock walls per OD (mm) — the structural floor ──
+# Verbatim from a real ISO 1127 Serie 1 (304L/316L) tube catalogue
+# (gillain.com/en/tubes-and-components ... industrial-tubes-iso-1127). This is
+# the *light commercial* range; its lightest wall per size sets the structural
+# floor (the "don't go thinner than real tube" guard).
+_ISO_1127_SERIE1: dict[str, list[float]] = {
+    "DN15":  [1.6, 2.0, 2.6],
+    "DN20":  [1.6, 2.0, 2.6],
+    "DN25":  [1.6, 2.0, 3.2],
+    "DN32":  [1.6, 2.0, 3.2],
+    "DN40":  [1.6, 2.0, 3.2],
+    "DN50":  [1.6, 2.0, 3.6],
+    "DN65":  [1.6, 2.0, 3.6],
+    "DN80":  [1.6, 2.0, 4.0],
+    "DN100": [2.0],
+    "DN125": [2.0],
+    "DN150": [2.0],
+    "DN200": [2.0],
+}
+
+# ── Standard wall ladder per DN (mm), used for snapping ───────────────────────
+# Light end = ISO 1127 Serie-1 stock above (so the floor matches real tube);
+# heavier rungs are the same-OD EN 10216-5 / EN 10217-7 *pressure-pipe* walls
+# (ISO 4200 series), so when pressure governs the recommendation still lands on
+# a wall that is actually manufactured. SS316L and CS share this OD/wall grid.
+# DN250/DN300 are CS-only (EN 10220); Serie 1 above stops at DN200.
 EN_ISO_1127_WALLS: dict[str, list[float]] = {
-    "DN15":  [1.6, 2.0, 2.3, 2.6, 3.2],
-    "DN20":  [1.6, 2.0, 2.3, 2.6, 3.2],
+    "DN15":  [1.6, 2.0, 2.6, 3.2],
+    "DN20":  [1.6, 2.0, 2.6, 3.2],
     "DN25":  [1.6, 2.0, 2.6, 3.2, 4.0],
     "DN32":  [1.6, 2.0, 2.6, 3.2, 4.0],
     "DN40":  [1.6, 2.0, 2.6, 3.2, 4.0],
-    "DN50":  [1.6, 2.0, 2.9, 3.2, 4.0, 5.0],
-    "DN65":  [2.0, 2.6, 2.9, 3.6, 5.0],
-    "DN80":  [2.0, 2.6, 3.2, 4.0, 5.0, 5.6],
-    "DN100": [2.0, 2.6, 3.6, 4.5, 5.0, 6.3],
-    "DN125": [2.6, 3.2, 4.0, 5.0, 6.3],
-    "DN150": [2.6, 3.6, 4.5, 5.0, 6.3, 7.1],
-    "DN200": [2.6, 3.6, 4.5, 6.3, 8.0],
-    "DN250": [3.6, 4.5, 6.3, 8.0],
-    "DN300": [4.0, 5.0, 6.3, 8.0],
+    "DN50":  [1.6, 2.0, 2.9, 3.6, 4.0, 5.0],
+    "DN65":  [1.6, 2.0, 2.9, 3.6, 5.0],
+    "DN80":  [1.6, 2.0, 2.6, 3.2, 4.0, 5.0, 5.6],
+    "DN100": [2.0, 2.6, 3.6, 4.5, 6.3],
+    "DN125": [2.0, 2.6, 3.6, 4.0, 5.0, 6.3],
+    "DN150": [2.0, 2.6, 3.6, 4.5, 6.3, 7.1],
+    "DN200": [2.0, 2.6, 3.6, 4.5, 6.3, 8.0],
+    "DN250": [2.6, 3.6, 4.5, 6.3, 8.0],
+    "DN300": [3.6, 4.5, 6.3, 8.0],
 }
 
 # Default EN ISO 1127 mill under-tolerance on wall (class T2, ±12.5 %): the
