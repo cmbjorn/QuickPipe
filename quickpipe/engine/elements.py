@@ -58,6 +58,12 @@ class Pipe:
     pn_class: str = "PN16"                 # "PN16" | "PN40"
     wall_override: bool = False            # True → use wall_override_mm instead of table
     wall_override_mm: float = 3.2          # used when wall_override is True
+    # Wall-thickness sizing (EN 13480-3 pressure check). design_* default to the
+    # line inlet conditions in the UI when left as None.
+    design_p_barg: Optional[float] = None  # design (gauge) pressure for wall check
+    design_t_C: Optional[float] = None     # design temperature for wall check
+    corrosion_allow_mm: float = 0.0        # corrosion allowance added to required wall
+    weld_factor: float = 1.0               # EN 13480-3 joint coefficient z (1.0 seamless)
     tube_size: str = "T25"                 # used when pipe_type == "Tubing"
     tube_wall: str = "2.0 mm wall"
     length_m: float = 10.0                 # run (horizontal) or height (vertical)

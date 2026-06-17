@@ -176,7 +176,91 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
                    "these values will overestimate losses.")
 
     if pipe_type_raw == "DN Pipe":
+        render_wall_check(el, inlet_p_bara)
         render_suggest_dn(el, inlet_p_bara)
+
+
+def _current_wall_mm(el: dict, mat: str) -> float:
+    """The wall the section is currently using — override value or PN-class table."""
+    if el.get("wall_override"):
+        return float(el.get("wall_override_mm") or 0.0)
+    return float(state.EN_PIPE_WALL_MM.get(mat, {})
+                 .get(el.get("pn_class", "PN16"), {}).get(el.get("dn", "DN50"), 0.0))
+
+
+def render_wall_check(el: dict, inlet_p_bara: float) -> None:
+    """EN 13480-3 wall-thickness guidance: size the wall for a service and snap
+    to a real EN ISO 1127 wall (never thinner than the structural floor)."""
+    with st.expander("🔧 Wall thickness check (EN 13480-3)", expanded=False):
+        mat = el.get("material", "SS316L")
+        dn = el.get("dn", "DN50")
+        od = state.EN_PIPE_OD_MM.get(mat, {}).get(dn, 0.0)
+        if od <= 0:
+            st.info("Select a DN to run the wall check.")
+            return
+
+        inlet_t_C = float(state.inlet().get("T_C", 25.0))
+        dflt_p = el.get("design_p_barg")
+        if dflt_p is None:
+            dflt_p = max(0.0, round(inlet_p_bara - 1.013, 1))   # operating bara → barg
+        dflt_t = el.get("design_t_C")
+        if dflt_t is None:
+            dflt_t = inlet_t_C
+
+        c1, c2 = st.columns(2)
+        dp = c1.number_input("Design pressure (barg)", 0.0, 1000.0, float(dflt_p), 1.0,
+                             key=f"{el['id']}_dpb",
+                             help="Maximum gauge pressure the wall must contain (usually above operating).")
+        dt = c2.number_input("Design temperature (°C)", -50.0, 550.0, float(dflt_t), 5.0,
+                             key=f"{el['id']}_dtc",
+                             help="Allowable stress is derated at this temperature.")
+        c3, c4 = st.columns(2)
+        ca = c3.number_input("Corrosion allowance (mm)", 0.0, 10.0,
+                             float(el.get("corrosion_allow_mm", 0.0)), 0.5, key=f"{el['id']}_ca")
+        seamless = c4.checkbox("Seamless pipe (z = 1.0)", el.get("weld_factor", 1.0) >= 1.0,
+                               key=f"{el['id']}_seam",
+                               help="Uncheck for welded pipe without full radiography (joint factor z = 0.85).")
+        el["design_p_barg"] = dp
+        el["design_t_C"] = dt
+        el["corrosion_allow_mm"] = ca
+        el["weld_factor"] = 1.0 if seamless else 0.85
+
+        r = state.recommend_wall(mat, dn, od, dp, dt,
+                                 corrosion_allow_mm=ca, weld_factor=el["weld_factor"])
+        rec = r["recommended_wall_mm"]
+
+        st.caption(f"OD {od:.1f} mm · allowable stress f = {r['f_mpa']:.0f} MPa · "
+                   f"pressure-only minimum e = {r['e_pressure_mm']:.2f} mm "
+                   f"(+CA, ÷mill tol → {r['t_required_mm']:.2f} mm)")
+        st.markdown(f"**Recommended wall: {rec:.1f} mm** · governed by **{r['governed_by']}** · "
+                    f"rated **{r['p_rated_barg']:.0f} barg** at {dt:.0f} °C")
+        if r["governed_by"] == "structural floor":
+            st.caption(f"↳ Pressure alone needs only {r['t_required_mm']:.2f} mm, but the {r['floor_mm']:.1f} mm "
+                       f"structural floor (lightest EN ISO 1127 wall for {dn}) governs — so the tool "
+                       f"won't hand you paper-thin pipe just because the math allows it.")
+        if r["ladder_exceeded"]:
+            st.warning(f"Design pressure exceeds even the heaviest standard wall "
+                       f"({r['walls'][-1]:.1f} mm → {r['p_rated_barg']:.0f} barg). "
+                       "Step up a DN, raise the pressure class, or specify a special heavy wall.")
+
+        cur = _current_wall_mm(el, mat)
+        if cur > 0:
+            cur_eff = cur * (1.0 - 0.125) - ca
+            cur_rated = state.pressure_rating_barg(cur_eff, od, mat, dt, el["weld_factor"])
+            ok = cur >= rec - 1e-9 and cur_rated >= dp
+            src = "override" if el.get("wall_override") else f"{el.get('pn_class','PN16')} table"
+            st.markdown(f"{'✅' if ok else '❌'} Current wall **{cur:.1f} mm** ({src}) → "
+                        f"rated **{cur_rated:.0f} barg**"
+                        + ("" if ok else f" — thinner than the recommended {rec:.1f} mm"))
+
+        if st.button(f"Apply {rec:.1f} mm wall (override)", key=f"{el['id']}_applywall",
+                     width="stretch"):
+            el["wall_override"] = True
+            el["wall_override_mm"] = float(rec)
+            # Pre-set the override widgets so they reflect the applied wall next run.
+            st.session_state[f"{el['id']}_wo"] = True
+            st.session_state[f"{el['id']}_wmm"] = float(rec)
+            st.rerun()
 
 
 def _misc(el: dict) -> None:

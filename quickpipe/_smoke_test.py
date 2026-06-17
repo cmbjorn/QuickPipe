@@ -13,6 +13,9 @@ from quickpipe.engine.march import _insitu_density, G, pipe_geometry
 import multiphase_engine as E
 from standards.piping import (
     EN_PIPE_OD_MM, EN_PIPE_WALL_MM, TUBING_DATABASE, en_pipe_id_m)
+from standards.pressure_rating import (
+    allowable_stress_mpa, t_pressure_min_mm, pressure_rating_barg,
+    recommend_wall, EN_ISO_1127_WALLS)
 from physics.friction import churchill_f
 
 _PASS = "\033[92mPASS\033[0m"
@@ -201,6 +204,43 @@ res_nf = march(inlet(water(50.0)),
                [Pipe(id="p", name="NF", dn="DN80", pn_class="PN16",
                      material="SS316L", length_m=20.0)])
 check("dp_fit is zero (no fittings)", row_for(res_nf, "NF").dp_fit_kpa == 0.0)
+
+# 13. EN 13480-3 pressure rating + allowable stress -----------------------------
+print("13. EN 13480-3 pressure rating")
+# SS316L allowable stress at 100 C = Rp1.0(100)/1.5 = 200/1.5 = 133.3 MPa
+check("SS316L f(100C) = 133.3 MPa", abs(allowable_stress_mpa("SS316L", 100.0) - 133.33) < 0.5,
+      f"got {allowable_stress_mpa('SS316L', 100.0):.1f}")
+# Allowable stress decreases with temperature
+check("f decreases with temperature", allowable_stress_mpa("SS316L", 300.0) < allowable_stress_mpa("SS316L", 100.0))
+# pressure_rating is the exact inverse of t_pressure_min
+od50 = EN_PIPE_OD_MM["SS316L"]["DN50"]
+e = t_pressure_min_mm(20.0, od50, "SS316L", 100.0)
+p_back = pressure_rating_barg(e, od50, "SS316L", 100.0)
+check("rating(t_min(P)) round-trips to P", abs(p_back - 20.0) < 0.05, f"got {p_back:.3f} barg")
+
+# 14. Wall recommendation — structural floor vs pressure governing --------------
+print("14. Wall recommendation (no paper-thin pipe)")
+# H2 case: 20 barg / 100 C on DN50 SS316L → pressure ~0.45 mm, floor must govern
+rH2 = recommend_wall("SS316L", "DN50", od50, 20.0, 100.0)
+check("H2 20barg/100C governed by structural floor", rH2["governed_by"] == "structural floor",
+      rH2["governed_by"])
+check("recommended wall = lightest ISO 1127 wall (1.6 mm)", abs(rH2["recommended_wall_mm"] - 1.6) < 1e-9,
+      f"got {rH2['recommended_wall_mm']} mm")
+check("recommended wall NOT paper-thin (≥ 1.5 mm)", rH2["recommended_wall_mm"] >= 1.5)
+check("recommended wall rated above design P", rH2["p_rated_barg"] > 20.0,
+      f"{rH2['p_rated_barg']:.0f} barg")
+# High pressure: 150 barg / 200 C → pressure must govern and snap to a heavier wall
+rHP = recommend_wall("SS316L", "DN50", od50, 150.0, 200.0)
+check("150barg/200C governed by pressure", rHP["governed_by"] == "pressure + allowances",
+      rHP["governed_by"])
+check("high-pressure wall thicker than floor", rHP["recommended_wall_mm"] > rH2["recommended_wall_mm"],
+      f"{rHP['recommended_wall_mm']} mm")
+check("recommended wall is a real ISO 1127 wall", rHP["recommended_wall_mm"] in EN_ISO_1127_WALLS["DN50"])
+# Corrosion allowance pushes the required wall up
+rCA = recommend_wall("CS", "DN100", EN_PIPE_OD_MM["CS"]["DN100"], 40.0, 150.0, corrosion_allow_mm=3.0)
+rNoCA = recommend_wall("CS", "DN100", EN_PIPE_OD_MM["CS"]["DN100"], 40.0, 150.0, corrosion_allow_mm=0.0)
+check("corrosion allowance increases required wall", rCA["t_required_mm"] > rNoCA["t_required_mm"],
+      f"CA={rCA['t_required_mm']:.2f} vs noCA={rNoCA['t_required_mm']:.2f} mm")
 
 print()
 print(f"\033[92mAll smoke tests passed.\033[0m" if _n_fail == 0
