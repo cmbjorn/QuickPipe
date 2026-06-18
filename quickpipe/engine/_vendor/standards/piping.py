@@ -297,3 +297,80 @@ def en_pipe_id_m(material: str, pn_class: str, dn: str,
     else:
         wall_mm = EN_PIPE_WALL_MM[material][pn_class][dn]
     return (od_mm - 2.0 * wall_mm) / 1000.0
+
+
+# ── ASME pipe dimensions (B36.10M carbon/alloy, B36.19M stainless) ────────────
+# Many engineers size lines in NPS + schedule. Outside diameters (mm) by NPS are
+# shared by B36.10M and B36.19M, but note they differ slightly from the EN/ISO
+# ODs for some sizes (e.g. 2-1/2" = 73.0 mm here vs DN65 = 76.1 mm in EN).
+ASME_PIPE_OD_MM: dict[str, float] = {
+    '1/2"':   21.3,  '3/4"':   26.7,  '1"':    33.4,  '1-1/4"': 42.2,
+    '1-1/2"': 48.3,  '2"':     60.3,  '2-1/2"': 73.0, '3"':     88.9,
+    '4"':    114.3,  '5"':    141.3,  '6"':   168.3,  '8"':    219.1,
+    '10"':   273.0,  '12"':   323.9,
+}
+
+# Wall thickness (mm) by [material][nps][schedule].
+#   CS     → ASME B36.10M (carbon/alloy steel) schedules
+#   SS316L → ASME B36.19M (stainless) S-schedules
+# STD and XS are kept separate from Sch 40 / Sch 80 because they diverge at the
+# large end: STD caps at 9.53 mm (≥12"), XS caps at 12.70 mm (≥10"), whereas
+# Sch 40 / Sch 80 keep climbing.
+ASME_WALL_MM: dict[str, dict[str, dict[str, float]]] = {
+    "CS": {
+        '1/2"':   {"Sch 10": 2.11, "Sch 40": 2.77, "STD": 2.77, "Sch 80": 3.73, "XS": 3.73, "Sch 160": 4.78,  "XXS": 7.47},
+        '3/4"':   {"Sch 10": 2.11, "Sch 40": 2.87, "STD": 2.87, "Sch 80": 3.91, "XS": 3.91, "Sch 160": 5.56,  "XXS": 7.82},
+        '1"':     {"Sch 10": 2.77, "Sch 40": 3.38, "STD": 3.38, "Sch 80": 4.55, "XS": 4.55, "Sch 160": 6.35,  "XXS": 9.09},
+        '1-1/4"': {"Sch 10": 2.77, "Sch 40": 3.56, "STD": 3.56, "Sch 80": 4.85, "XS": 4.85, "Sch 160": 6.35,  "XXS": 9.70},
+        '1-1/2"': {"Sch 10": 2.77, "Sch 40": 3.68, "STD": 3.68, "Sch 80": 5.08, "XS": 5.08, "Sch 160": 7.14,  "XXS": 10.15},
+        '2"':     {"Sch 10": 2.77, "Sch 40": 3.91, "STD": 3.91, "Sch 80": 5.54, "XS": 5.54, "Sch 160": 8.74,  "XXS": 11.07},
+        '2-1/2"': {"Sch 10": 3.05, "Sch 40": 5.16, "STD": 5.16, "Sch 80": 7.01, "XS": 7.01, "Sch 160": 9.53,  "XXS": 14.02},
+        '3"':     {"Sch 10": 3.05, "Sch 40": 5.49, "STD": 5.49, "Sch 80": 7.62, "XS": 7.62, "Sch 160": 11.13, "XXS": 15.24},
+        '4"':     {"Sch 10": 3.05, "Sch 40": 6.02, "STD": 6.02, "Sch 80": 8.56, "XS": 8.56, "Sch 160": 13.49, "XXS": 17.12},
+        '5"':     {"Sch 10": 3.40, "Sch 40": 6.55, "STD": 6.55, "Sch 80": 9.53, "XS": 9.53, "Sch 160": 15.88, "XXS": 19.05},
+        '6"':     {"Sch 10": 3.40, "Sch 40": 7.11, "STD": 7.11, "Sch 80": 10.97, "XS": 10.97, "Sch 160": 18.26, "XXS": 21.95},
+        '8"':     {"Sch 10": 3.76, "Sch 40": 8.18, "STD": 8.18, "Sch 80": 12.70, "XS": 12.70, "Sch 160": 23.01, "XXS": 22.23},
+        '10"':    {"Sch 10": 4.19, "Sch 40": 9.27, "STD": 9.27, "Sch 80": 15.09, "XS": 12.70, "Sch 160": 28.58, "XXS": 25.40},
+        '12"':    {"Sch 10": 4.57, "Sch 40": 10.31, "STD": 9.53, "Sch 80": 17.48, "XS": 12.70, "Sch 160": 33.32, "XXS": 25.40},
+    },
+    "SS316L": {
+        '1/2"':   {"5S": 1.65, "10S": 2.11, "40S": 2.77, "80S": 3.73},
+        '3/4"':   {"5S": 1.65, "10S": 2.11, "40S": 2.87, "80S": 3.91},
+        '1"':     {"5S": 1.65, "10S": 2.77, "40S": 3.38, "80S": 4.55},
+        '1-1/4"': {"5S": 1.65, "10S": 2.77, "40S": 3.56, "80S": 4.85},
+        '1-1/2"': {"5S": 1.65, "10S": 2.77, "40S": 3.68, "80S": 5.08},
+        '2"':     {"5S": 1.65, "10S": 2.77, "40S": 3.91, "80S": 5.54},
+        '2-1/2"': {"5S": 2.11, "10S": 3.05, "40S": 5.16, "80S": 7.01},
+        '3"':     {"5S": 2.11, "10S": 3.05, "40S": 5.49, "80S": 7.62},
+        '4"':     {"5S": 2.11, "10S": 3.05, "40S": 6.02, "80S": 8.56},
+        '5"':     {"5S": 2.77, "10S": 3.40, "40S": 6.55, "80S": 9.53},
+        '6"':     {"5S": 2.77, "10S": 3.40, "40S": 7.11, "80S": 10.97},
+        '8"':     {"5S": 2.77, "10S": 3.76, "40S": 8.18, "80S": 12.70},
+        '10"':    {"5S": 3.40, "10S": 4.19, "40S": 9.27, "80S": 12.70},
+        '12"':    {"5S": 3.96, "10S": 4.57, "40S": 9.53, "80S": 12.70},
+    },
+}
+
+# Schedule pick-lists per material (thin → thick), and human-readable notes.
+ASME_CS_SCHEDULES: list[str] = ["Sch 10", "Sch 40", "STD", "Sch 80", "XS", "Sch 160", "XXS"]
+ASME_SS_SCHEDULES: list[str] = ["5S", "10S", "40S", "80S"]
+ASME_SCHEDULE_DESCRIPTIONS: dict[str, str] = {
+    "Sch 10":  "Sch 10 — light wall, large-bore economy / low pressure",
+    "Sch 40":  'Sch 40 — general service (= STD up to 10")',
+    "STD":     'Standard wall (= Sch 40 up to 10"; caps at 9.53 mm)',
+    "Sch 80":  'Sch 80 — higher pressure (= XS up to 8")',
+    "XS":      'Extra Strong (= Sch 80 up to 8"; caps at 12.70 mm)',
+    "Sch 160": "Sch 160 — high pressure",
+    "XXS":     "Double Extra Strong — heaviest wall",
+    "5S":      "B36.19M 5S — extra-light stainless",
+    "10S":     "B36.19M 10S — light stainless",
+    "40S":     "B36.19M 40S — standard stainless",
+    "80S":     "B36.19M 80S — heavy stainless",
+}
+
+
+def asme_pipe_id_m(material: str, nps: str, schedule: str) -> float:
+    """Return the ASME pipe internal diameter in metres (ID = OD − 2 × wall)."""
+    od_mm   = ASME_PIPE_OD_MM[nps]
+    wall_mm = ASME_WALL_MM[material][nps][schedule]
+    return (od_mm - 2.0 * wall_mm) / 1000.0

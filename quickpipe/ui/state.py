@@ -18,6 +18,8 @@ import quickpipe.engine as _engine  # noqa: F401  (runs sys.path bootstrap)
 import multiphase_engine as _E
 from standards.piping import (
     EN_PIPE_OD_MM, EN_PIPE_WALL_MM, PN_DESCRIPTIONS,
+    ASME_PIPE_OD_MM, ASME_WALL_MM, ASME_CS_SCHEDULES, ASME_SS_SCHEDULES,
+    ASME_SCHEDULE_DESCRIPTIONS,
     TUBING_DATABASE, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, FITTING_Le_over_D)
 from standards.pressure_rating import (  # noqa: F401  (re-exported for the UI)
     recommend_wall, pressure_rating_barg, allowable_stress_mpa, EN_ISO_1127_WALLS,
@@ -30,11 +32,14 @@ from quickpipe.engine.elements import (
 CS_DN_LIST = list(EN_PIPE_OD_MM["CS"].keys())
 SS316L_DN_LIST = list(EN_PIPE_OD_MM["SS316L"].keys())
 PN_LIST = list(PN_DESCRIPTIONS.keys())
+NPS_LIST = list(ASME_PIPE_OD_MM.keys())
 TUBE_LIST = list(TUBING_DATABASE.keys())
 MATERIALS = list(MATERIAL_ROUGHNESS.keys())
 LINERS = list(LINER_ROUGHNESS.keys())
 FITTINGS = list(FITTING_Le_over_D.keys())
-PIPE_TYPES = ["EN Pipe - Carbon Steel", "EN Pipe - SS316L", "316SS Metric Tubing"]
+PIPE_TYPES = ["EN Pipe - Carbon Steel", "EN Pipe - SS316L",
+              "ASME Pipe - Carbon Steel", "ASME Pipe - SS316L",
+              "316SS Metric Tubing"]
 
 
 def tube_walls(tube_size: str) -> list[str]:

@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 import multiphase_engine as _E
 from standards.piping import (
     EN_PIPE_OD_MM, EN_PIPE_WALL_MM, en_pipe_id_m,
+    ASME_PIPE_OD_MM, ASME_WALL_MM, asme_pipe_id_m,
     TUBING_DATABASE, TUBING_ROUGHNESS,
     MATERIAL_ROUGHNESS, LINER_ROUGHNESS, sum_le_fit)
 
@@ -65,18 +66,24 @@ def _insitu_density(props: dict) -> float:
 
 def pipe_geometry(pipe):
     """(D_eff_m, roughness_m, fittings_equiv_length_m) for a Pipe section."""
-    if getattr(pipe, "pipe_type", "DN Pipe") == "Tubing":
+    ptype = getattr(pipe, "pipe_type", "DN Pipe")
+    if ptype == "Tubing":
         D = TUBING_DATABASE[pipe.tube_size][pipe.tube_wall]["id_m"]
         rough = TUBING_ROUGHNESS
         D_eff = D
     else:
-        D = en_pipe_id_m(pipe.material, pipe.pn_class, pipe.dn,
-                         pipe.wall_override, pipe.wall_override_mm)
+        if ptype == "NPS Pipe":
+            D = asme_pipe_id_m(pipe.material, pipe.nps, pipe.schedule)
+            _label = f"{pipe.nps}/{pipe.schedule}"
+        else:                                  # DN Pipe (EN)
+            D = en_pipe_id_m(pipe.material, pipe.pn_class, pipe.dn,
+                             pipe.wall_override, pipe.wall_override_mm)
+            _label = f"{pipe.dn}/{pipe.pn_class}"
         if pipe.lined:
             D_eff = D - 2.0 * pipe.liner_thickness_mm / 1000.0
             if D_eff <= 0:
                 raise ValueError(
-                    f"{pipe.dn}/{pipe.pn_class}: liner {pipe.liner_thickness_mm:.1f} mm is too thick "
+                    f"{_label}: liner {pipe.liner_thickness_mm:.1f} mm is too thick "
                     f"(bore {D*1000:.1f} mm → effective bore {D_eff*1000:.1f} mm ≤ 0). "
                     "Reduce liner thickness or choose a larger pipe.")
             rough = LINER_ROUGHNESS[pipe.liner_material]
@@ -199,17 +206,25 @@ def march(inlet, sections, *, correlation="Beggs-Brill", voidage_method="Homogen
             # Superficial velocities for regime map
             v_sg = h.get("V_sg_ms", 0.0)
             v_sl = h.get("V_sl_ms", 0.0)
-            _is_tube = getattr(el, "pipe_type", "DN Pipe") == "Tubing"
-            _pipe_label = (f"{el.tube_size}/{el.tube_wall}" if _is_tube
-                           else f"{el.dn}/{el.pn_class}")
-            # Lining only applies to (and is only bored into) DN pipe, not tubing.
+            _ptype = getattr(el, "pipe_type", "DN Pipe")
+            _is_tube = _ptype == "Tubing"
+            _is_nps = _ptype == "NPS Pipe"
+            if _is_tube:
+                _pipe_label = f"{el.tube_size}/{el.tube_wall}"
+                _class = "—"
+            elif _is_nps:
+                _pipe_label = f"{el.nps}/{el.schedule}"
+                _class = el.schedule
+            else:
+                _pipe_label = f"{el.dn}/{el.pn_class}"
+                _class = el.pn_class
+            # Lining only applies to (and is only bored into) pipe, not tubing.
             _lining = (f"{el.liner_material} {el.liner_thickness_mm:.1f} mm"
                        if el.lined and not _is_tube else "—")
             _material = el.material
-            _pn_class = el.pn_class if not _is_tube else "—"
             row = QuickpipeRow(
                 element=el.name, type="Pipe", pipe=_pipe_label,
-                material=_material, pn_class=_pn_class, lining=_lining,
+                material=_material, pn_class=_class, lining=_lining,
                 id_mm=round(h["D_eff"] * 1000, 1), l_m=el.length_m,
                 l_eff_m=round(h["L_eff"], 2), dz_m=dz,
                 fluid=fluid_label(fluid, h["props_in"]),

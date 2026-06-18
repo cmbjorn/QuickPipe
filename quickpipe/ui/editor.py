@@ -82,16 +82,17 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
 
     # Piping type selector — sets both pipe_type and material together
     _PIPING_LABELS = {
-        ("DN Pipe", "CS"):     "EN Pipe - Carbon Steel",
-        ("DN Pipe", "SS316L"): "EN Pipe - SS316L",
-        ("Tubing",  "SS316L"): "316SS Metric Tubing",
+        ("DN Pipe", "CS"):      "EN Pipe - Carbon Steel",
+        ("DN Pipe", "SS316L"):  "EN Pipe - SS316L",
+        ("NPS Pipe", "CS"):     "ASME Pipe - Carbon Steel",
+        ("NPS Pipe", "SS316L"): "ASME Pipe - SS316L",
+        ("Tubing",  "SS316L"):  "316SS Metric Tubing",
     }
     _PIPING_FROM_LABEL = {v: k for k, v in _PIPING_LABELS.items()}
     cur_label = _PIPING_LABELS.get(
         (el.get("pipe_type", "DN Pipe"), el.get("material", "SS316L")), "EN Pipe - SS316L")
-    piping_label = st.radio("Piping type", state.PIPE_TYPES,
-        index=_idx(state.PIPE_TYPES, cur_label),
-        horizontal=True, key=f"{el['id']}_ptype")
+    piping_label = st.selectbox("Piping type", state.PIPE_TYPES,
+        index=_idx(state.PIPE_TYPES, cur_label), key=f"{el['id']}_ptype")
     pipe_type_raw, mat_raw = _PIPING_FROM_LABEL.get(piping_label, ("DN Pipe", "SS316L"))
     el["pipe_type"] = pipe_type_raw
     el["material"] = mat_raw
@@ -112,6 +113,23 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
             _id_mm_t = _tdata.get("id_m", 0.0) * 1000
             c2.caption(f"ID = {_id_mm_t:.1f} mm  ·  {_tdata.get('weight_kg_m', 0):.3f} kg/m"
                        f"  ·  WP = {_tdata.get('wp_bar', 0)} bar")
+    elif pipe_type_raw == "NPS Pipe":
+        sch_list = state.ASME_CS_SCHEDULES if mat_raw == "CS" else state.ASME_SS_SCHEDULES
+        if el.get("schedule") not in sch_list:
+            el["schedule"] = "Sch 40" if mat_raw == "CS" else "40S"
+        c1, c2 = st.columns(2)
+        el["nps"] = c1.selectbox("NPS", state.NPS_LIST,
+                                 index=_idx(state.NPS_LIST, el.get("nps", '2"')),
+                                 key=f"{el['id']}_nps")
+        el["schedule"] = c2.selectbox("Schedule", sch_list,
+                                      index=_idx(sch_list, el.get("schedule")),
+                                      key=f"{el['id']}_sch")
+        _od = state.ASME_PIPE_OD_MM.get(el["nps"], 0.0)
+        _wall = state.ASME_WALL_MM.get(mat_raw, {}).get(el["nps"], {}).get(el["schedule"], 0.0)
+        _id_mm_n = (_od - 2.0 * _wall) if _od > 0 and _wall > 0 else 0.0
+        st.caption(f"ASME {'B36.10M' if mat_raw == 'CS' else 'B36.19M'}  ·  "
+                   f"OD = {_od:.1f} mm  ·  t = {_wall:.2f} mm  ·  ID = {_id_mm_n:.1f} mm  ·  "
+                   f"{state.ASME_SCHEDULE_DESCRIPTIONS.get(el['schedule'], '')}")
     else:
         dn_list = state.CS_DN_LIST if mat_raw == "CS" else state.SS316L_DN_LIST
         if el.get("dn") not in dn_list:
@@ -145,7 +163,7 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
         "Orientation", state.ORIENTATIONS,
         index=_idx(state.ORIENTATIONS, el.get("orientation", "Horizontal")),
         key=f"{el['id']}_or")
-    if pipe_type_raw == "DN Pipe":
+    if pipe_type_raw != "Tubing":
         el["lined"] = st.checkbox("Lined", bool(el.get("lined", False)), key=f"{el['id']}_lined")
         if el["lined"]:
             lc1, lc2 = st.columns(2)

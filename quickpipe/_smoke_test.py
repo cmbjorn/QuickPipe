@@ -12,7 +12,8 @@ from quickpipe.engine.fluids import props_at
 from quickpipe.engine.march import _insitu_density, G, pipe_geometry
 import multiphase_engine as E
 from standards.piping import (
-    EN_PIPE_OD_MM, EN_PIPE_WALL_MM, TUBING_DATABASE, en_pipe_id_m)
+    EN_PIPE_OD_MM, EN_PIPE_WALL_MM, TUBING_DATABASE, en_pipe_id_m,
+    ASME_PIPE_OD_MM, ASME_WALL_MM, asme_pipe_id_m)
 from standards.pressure_rating import (
     allowable_stress_mpa, t_pressure_min_mm, pressure_rating_barg,
     recommend_wall, EN_ISO_1127_WALLS, _ISO_1127_SERIE1,
@@ -266,6 +267,36 @@ check("Series 2/3 ODs are metric (not pipe ODs)", metric_ods.isdisjoint(pipe_ods
 # A Series 2 tube gives a finite positive pressure rating
 r57 = pressure_rating_barg(2.0 * 0.875, 57.0, "SS316L", 20.0)
 check("Series 2 OD57x2.0 rates > 0 barg", r57 > 0, f"{r57:.0f} barg")
+
+# 16. ASME B36.10M / B36.19M pipe schedules ------------------------------------
+print("16. ASME pipe schedules (NPS + schedule)")
+# 2" Sch 40 CS: OD 60.3, wall 3.91 → ID 52.48 mm
+id_2_40 = asme_pipe_id_m("CS", '2"', "Sch 40") * 1000
+check('2" CS Sch 40 ID = 52.48 mm', abs(id_2_40 - 52.48) < 0.05, f"got {id_2_40:.2f} mm")
+# STD == Sch 40 at 2" (they only diverge at the large end)
+check('2" STD wall == Sch 40 wall', ASME_WALL_MM["CS"]['2"']["STD"] == ASME_WALL_MM["CS"]['2"']["Sch 40"])
+# 12" divergence: Sch 40 (10.31) > STD (9.53); XS (12.70) < Sch 80 (17.48)
+w12 = ASME_WALL_MM["CS"]['12"']
+check('12" Sch 40 > STD (diverge)', w12["Sch 40"] > w12["STD"], f"{w12['Sch 40']} vs {w12['STD']}")
+check('12" XS < Sch 80 (diverge)', w12["XS"] < w12["Sch 80"], f"{w12['XS']} vs {w12['Sch 80']}")
+# B36.19 stainless 80S caps at 12.70 mm at 10" while B36.10 Sch 80 climbs to 15.09
+check('10" SS 80S (12.70) < CS Sch 80 (15.09)',
+      ASME_WALL_MM["SS316L"]['10"']["80S"] < ASME_WALL_MM["CS"]['10"']["Sch 80"])
+# ASME ODs differ from EN for 2-1/2": 73.0 vs DN65 76.1
+_asme_od_2h = ASME_PIPE_OD_MM['2-1/2"']
+_en_od_dn65 = EN_PIPE_OD_MM["SS316L"]["DN65"]
+check('ASME 2-1/2" OD (73.0) != EN DN65 OD (76.1)', abs(_asme_od_2h - _en_od_dn65) > 1.0,
+      f"ASME {_asme_od_2h} vs EN {_en_od_dn65}")
+# March an NPS pipe end-to-end and check the row carries ID + schedule label
+npipe = Pipe(id="n", name="N", pipe_type="NPS Pipe", nps='2"', schedule="Sch 40",
+             material="CS", length_m=20.0)
+resn = march(inlet(water(50.0)), [npipe])
+rn = row_for(resn, "N")
+check('NPS pipe row ID matches asme_pipe_id_m', abs(rn.id_mm - round(id_2_40, 1)) < 0.05,
+      f"row {rn.id_mm} vs {id_2_40:.2f}")
+check('NPS pipe label is NPS/Sch', rn.pipe == '2"/Sch 40', rn.pipe)
+check('NPS pipe class column = schedule', rn.pn_class == "Sch 40", rn.pn_class)
+check('NPS pipe friction > 0', rn.dp_fric_kpa > 0)
 
 print()
 print(f"\033[92mAll smoke tests passed.\033[0m" if _n_fail == 0

@@ -13,9 +13,9 @@ from dataclasses import dataclass
 class QuickpipeRow:
     element: str
     type: str
-    pipe: str            # "DN/Schedule" (blank for non-pipe)
+    pipe: str            # "DN/PN" (EN) or "NPS/Sch" (ASME); blank for non-pipe
     material: str        # e.g. "SS316L" or "CS" (blank for non-pipe)
-    pn_class: str        # e.g. "PN16" (blank for tubing / non-pipe)
+    pn_class: str        # EN PN class or ASME schedule; "—" for tubing / non-pipe
     id_mm: float
     l_m: float
     l_eff_m: float
@@ -47,7 +47,7 @@ class QuickpipeRow:
             "Element":        self.element,
             "Pipe":           self.pipe,
             "Material":       self.material,
-            "PN Class":       self.pn_class,
+            "Class / Sch":    self.pn_class,
             "ID (mm)":        self.id_mm,
             "Lining":         self.lining,
             "L (m)":          self.l_m,
@@ -71,6 +71,6 @@ class QuickpipeRow:
 # Column order for DataFrame / Excel rendering.
 COLUMNS = list(QuickpipeRow(
     "", "", "", "", "", 0, 0, 0, 0, "", "", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "").to_dict().keys())
-# Columns: Element, Pipe, Material, PN Class, ID (mm), Lining, L (m), L_eff (m),
+# Columns: Element, Pipe, Material, Class / Sch, ID (mm), Lining, L (m), L_eff (m),
 #          Δz (m), Fluid, Flow (kg/h), Flow (m³/h), P_in (bara), ΔP_fric (kPa),
 #          ΔP_fit (kPa), ΔP_grav (kPa), ΔP (kPa), P_out (bara), V (m/s), V/V_e, Regime

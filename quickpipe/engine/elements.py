@@ -53,9 +53,11 @@ class Pipe:
     kind: str = "pipe"
     id: str = "p1"
     name: str = "Section"
-    pipe_type: str = "DN Pipe"             # "DN Pipe" | "Tubing"
+    pipe_type: str = "DN Pipe"             # "DN Pipe" (EN) | "NPS Pipe" (ASME) | "Tubing"
     dn: str = "DN50"
-    pn_class: str = "PN16"                 # "PN16" | "PN40"
+    pn_class: str = "PN16"                 # "PN16" | "PN40"  (EN DN pipe)
+    nps: str = '2"'                        # NPS size  (ASME NPS pipe)
+    schedule: str = "Sch 40"               # ASME schedule (CS) / S-schedule (SS)
     wall_override: bool = False            # True → use wall_override_mm instead of table
     wall_override_mm: float = 3.2          # used when wall_override is True
     # Wall-thickness sizing (EN 13480-3 pressure check). design_* default to the
