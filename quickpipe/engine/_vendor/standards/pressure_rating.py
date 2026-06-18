@@ -93,6 +93,33 @@ EN_ISO_1127_WALLS: dict[str, list[float]] = {
     "DN300": [3.6, 4.5, 6.3, 8.0],
 }
 
+# ── ISO 1127 Series 2 & 3 — supplementary metric-OD tube (OD mm → wall mm) ─────
+# EN ISO 1127 sorts tube ODs into three preference series (selected from
+# ISO 4200). Series 1 is the pipe-OD family handled above (EN_PIPE_OD_MM /
+# EN_ISO_1127_WALLS). Series 2 & 3 are supplementary *metric* ODs supplied in
+# thin fixed walls — small-bore instrument/utility tube plus a few mid sizes.
+# Real commercial sizes from a 304L/316L ISO 1127 catalogue (gillain.com).
+ISO_1127_SERIES_2: dict[float, float] = {
+    6.0: 1.0, 8.0: 1.0, 10.0: 1.0, 16.0: 1.0, 57.0: 2.0, 70.0: 2.0,
+}
+ISO_1127_SERIES_3: dict[float, float] = {
+    30.0: 2.0, 44.5: 2.0, 54.0: 2.0,
+}
+
+ISO_1127_SERIES_DESCRIPTIONS: dict[int, str] = {
+    1: ("Series 1 — pipe-size ODs (inch-derived, match DN/NPS pipe, 21.3–323.9 mm). "
+        "First-choice series for process piping: connects to pipe-size flanges and "
+        "fittings. Walls run from light hygienic tube up to heavy pressure-pipe walls "
+        "— this is what the wall-thickness check above sizes."),
+    2: ("Series 2 — supplementary metric ODs. Small-bore 6–16 mm for instrument, "
+        "impulse, sample and utility lines, plus a few larger metric sizes (57, 70 mm). "
+        "Thin fixed walls (~1.0–2.0 mm); use when a metric OD outside the pipe series "
+        "is required."),
+    3: ("Series 3 — further supplementary metric ODs (30, 44.5, 54 mm). Least-preferred "
+        "series: intermediate metric sizes for mechanical/equipment connections and "
+        "metric-spec tube. Thin fixed walls (~2.0 mm)."),
+}
+
 # Default EN ISO 1127 mill under-tolerance on wall (class T2, ±12.5 %): the
 # thinnest delivered wall = nominal · (1 − tol). Conservative for seamless.
 DEFAULT_MILL_TOL = 0.125

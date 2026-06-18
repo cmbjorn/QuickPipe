@@ -178,6 +178,7 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
     if pipe_type_raw == "DN Pipe":
         render_wall_check(el, inlet_p_bara)
         render_suggest_dn(el, inlet_p_bara)
+        render_iso1127_reference(el)
 
 
 def _current_wall_mm(el: dict, mat: str) -> float:
@@ -265,6 +266,36 @@ def render_wall_check(el: dict, inlet_p_bara: float) -> None:
             st.session_state[f"{el['id']}_wo"] = True
             st.session_state[f"{el['id']}_wmm"] = float(rec)
             st.rerun()
+
+
+def render_iso1127_reference(el: dict) -> None:
+    """Reference panel: the three EN ISO 1127 tube series with descriptions.
+    Series 1 (pipe-size) is what the wall check sizes; Series 2 & 3 are the
+    supplementary metric-OD tube, shown with a live pressure rating."""
+    import pandas as pd
+    with st.expander("📐 ISO 1127 tube series (reference)", expanded=False):
+        st.caption("EN ISO 1127 sorts stainless tube ODs into three preference series "
+                   "(selected from ISO 4200). Series 1 is the pipe-OD family sized by the "
+                   "wall check above; Series 2 & 3 are supplementary metric-OD tube.")
+        # Rating shown for stainless tube (ISO 1127 is a stainless standard) at the
+        # wall-check design temperature, falling back to the line inlet temperature.
+        dt = el.get("design_t_C")
+        if dt is None:
+            dt = float(state.inlet().get("T_C", 20.0))
+
+        st.markdown(f"**Series 1 — pipe size** *(sized above)*")
+        st.caption(state.ISO_1127_SERIES_DESCRIPTIONS[1])
+        for n, data in ((2, state.ISO_1127_SERIES_2), (3, state.ISO_1127_SERIES_3)):
+            st.markdown(f"**Series {n} — supplementary metric tube**")
+            st.caption(state.ISO_1127_SERIES_DESCRIPTIONS[n])
+            rows = []
+            for od, wall in sorted(data.items()):
+                eff = wall * (1.0 - 0.125)               # no corrosion allowance on tube
+                rated = state.pressure_rating_barg(eff, od, "SS316L", dt)
+                rows.append({"OD (mm)": od, "Wall (mm)": wall,
+                             "ID (mm)": round(od - 2 * wall, 1),
+                             f"Rated @ {dt:.0f}°C (barg)": round(rated)})
+            st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
 
 def _misc(el: dict) -> None:

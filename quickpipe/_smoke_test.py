@@ -15,7 +15,8 @@ from standards.piping import (
     EN_PIPE_OD_MM, EN_PIPE_WALL_MM, TUBING_DATABASE, en_pipe_id_m)
 from standards.pressure_rating import (
     allowable_stress_mpa, t_pressure_min_mm, pressure_rating_barg,
-    recommend_wall, EN_ISO_1127_WALLS, _ISO_1127_SERIE1)
+    recommend_wall, EN_ISO_1127_WALLS, _ISO_1127_SERIE1,
+    ISO_1127_SERIES_2, ISO_1127_SERIES_3, ISO_1127_SERIES_DESCRIPTIONS)
 from physics.friction import churchill_f
 
 _PASS = "\033[92mPASS\033[0m"
@@ -251,6 +252,20 @@ check("ladder floor = lightest ISO 1127 Serie-1 wall", not floor_errs,
 asc_errs = [dn for dn, ws in EN_ISO_1127_WALLS.items()
             if any(ws[i] >= ws[i+1] for i in range(len(ws)-1))]
 check("wall ladders strictly ascending", not asc_errs, ", ".join(asc_errs))
+
+# 15. ISO 1127 Series 2 & 3 supplementary tube data ----------------------------
+print("15. ISO 1127 Series 2 & 3 reference data")
+check("Series 2 has small-bore 6 mm OD", 6.0 in ISO_1127_SERIES_2)
+check("Series 2 and 3 non-empty", len(ISO_1127_SERIES_2) > 0 and len(ISO_1127_SERIES_3) > 0)
+check("descriptions present for all 3 series", all(n in ISO_1127_SERIES_DESCRIPTIONS for n in (1, 2, 3)))
+# Series 2/3 are metric ODs distinct from the Series 1 pipe ODs
+pipe_ods = set(EN_PIPE_OD_MM["SS316L"].values())
+metric_ods = set(ISO_1127_SERIES_2) | set(ISO_1127_SERIES_3)
+check("Series 2/3 ODs are metric (not pipe ODs)", metric_ods.isdisjoint(pipe_ods),
+      f"overlap={metric_ods & pipe_ods}")
+# A Series 2 tube gives a finite positive pressure rating
+r57 = pressure_rating_barg(2.0 * 0.875, 57.0, "SS316L", 20.0)
+check("Series 2 OD57x2.0 rates > 0 barg", r57 > 0, f"{r57:.0f} barg")
 
 print()
 print(f"\033[92mAll smoke tests passed.\033[0m" if _n_fail == 0

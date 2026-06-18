@@ -20,7 +20,8 @@ from standards.piping import (
     EN_PIPE_OD_MM, EN_PIPE_WALL_MM, PN_DESCRIPTIONS,
     TUBING_DATABASE, MATERIAL_ROUGHNESS, LINER_ROUGHNESS, FITTING_Le_over_D)
 from standards.pressure_rating import (  # noqa: F401  (re-exported for the UI)
-    recommend_wall, pressure_rating_barg, allowable_stress_mpa, EN_ISO_1127_WALLS)
+    recommend_wall, pressure_rating_barg, allowable_stress_mpa, EN_ISO_1127_WALLS,
+    ISO_1127_SERIES_2, ISO_1127_SERIES_3, ISO_1127_SERIES_DESCRIPTIONS)
 
 from quickpipe.engine.elements import (
     Pipe, Misc, default_inlet, element_to_dict, ORIENTATIONS)
