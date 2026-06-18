@@ -12,8 +12,8 @@ Sources:
 
 # ── EN Pipe OD table (EN 10220 Series 1 / EN ISO 1127) ───────────────────────
 # Outside diameters in mm.
-# CS  runs DN15 – DN300 (EN 10220 Series 1).
-# SS316L runs DN15 – DN200 (EN ISO 1127 / EN 10220).
+# CS     runs DN15 – DN300 (EN 10220 Series 1).
+# SS316L runs DN15 – DN300 (EN 10220 / EN 10216-5 / EN 10217-7).
 EN_PIPE_OD_MM: dict[str, dict[str, float]] = {
     "CS": {
         "DN15":  21.3,  "DN20":  26.9,  "DN25":  33.7,  "DN32":  42.4,
@@ -25,6 +25,7 @@ EN_PIPE_OD_MM: dict[str, dict[str, float]] = {
         "DN15":  21.3,  "DN20":  26.9,  "DN25":  33.7,  "DN32":  42.4,
         "DN40":  48.3,  "DN50":  60.3,  "DN65":  76.1,  "DN80":  88.9,
         "DN100": 114.3, "DN125": 139.7, "DN150": 168.3, "DN200": 219.1,
+        "DN250": 273.0, "DN300": 323.9,
     },
 }
 
@@ -58,11 +59,13 @@ EN_PIPE_WALL_MM: dict[str, dict[str, dict[str, float]]] = {
             "DN15":  1.6, "DN20":  1.6, "DN25":  1.6, "DN32":  1.6,
             "DN40":  1.6, "DN50":  2.0, "DN65":  2.0, "DN80":  2.0,
             "DN100": 2.0, "DN125": 2.0, "DN150": 2.0, "DN200": 3.2,
+            "DN250": 3.6, "DN300": 4.0,
         },
         "PN40": {
             "DN15":  2.0, "DN20":  2.0, "DN25":  2.6, "DN32":  2.6,
             "DN40":  2.6, "DN50":  3.2, "DN65":  3.2, "DN80":  3.2,
             "DN100": 4.0, "DN125": 4.0, "DN150": 4.0, "DN200": 5.0,
+            "DN250": 6.3, "DN300": 8.0,
         },
     },
 }

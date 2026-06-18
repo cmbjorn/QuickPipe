@@ -68,6 +68,8 @@ _ISO_1127_SERIE1: dict[str, list[float]] = {
     "DN125": [2.0],
     "DN150": [2.0],
     "DN200": [2.0],
+    "DN250": [2.6, 3.6],
+    "DN300": [3.6, 4.5],
 }
 
 # ── Standard wall ladder per DN (mm), used for snapping ───────────────────────
@@ -75,7 +77,7 @@ _ISO_1127_SERIE1: dict[str, list[float]] = {
 # heavier rungs are the same-OD EN 10216-5 / EN 10217-7 *pressure-pipe* walls
 # (ISO 4200 series), so when pressure governs the recommendation still lands on
 # a wall that is actually manufactured. SS316L and CS share this OD/wall grid.
-# DN250/DN300 are CS-only (EN 10220); Serie 1 above stops at DN200.
+# DN250/DN300 walls from EN 10220 / EN 10216-5 (SS316L and CS).
 EN_ISO_1127_WALLS: dict[str, list[float]] = {
     "DN15":  [1.6, 2.0, 2.6, 3.2],
     "DN20":  [1.6, 2.0, 2.6, 3.2],

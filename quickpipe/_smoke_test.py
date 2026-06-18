@@ -164,9 +164,8 @@ check("DN50/SS316L/PN16 ID = 56.3 mm", abs(id_ss_pn16 * 1000 - 56.3) < 0.1,
 id_cs_pn40 = en_pipe_id_m("CS", "PN40", "DN50")
 check("DN50/CS/PN40 ID = 50.3 mm", abs(id_cs_pn40 * 1000 - 50.3) < 0.1,
       f"got {id_cs_pn40*1000:.1f} mm")
-# CS has DN300, SS316L does not
 check("CS DN list has DN300", "DN300" in EN_PIPE_OD_MM["CS"])
-check("SS316L DN list has no DN300", "DN300" not in EN_PIPE_OD_MM["SS316L"])
+check("SS316L DN list has DN300", "DN300" in EN_PIPE_OD_MM["SS316L"])
 # PN40 wall always ≥ PN16 wall for same material/DN
 wall_errs = []
 for mat in ("CS", "SS316L"):
