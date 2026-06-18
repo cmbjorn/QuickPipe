@@ -47,6 +47,12 @@ EN_PIPE_WALL_MM: dict[str, dict[str, dict[str, float]]] = {
             "DN100": 4.0, "DN125": 4.0, "DN150": 4.5,
             "DN200": 5.0, "DN250": 5.6, "DN300": 6.3,
         },
+        "PN25": {
+            "DN15":  2.9, "DN20":  2.9, "DN25":  3.6, "DN32":  3.6,
+            "DN40":  3.6, "DN50":  4.0, "DN65":  4.0, "DN80":  4.5,
+            "DN100": 5.0, "DN125": 5.0, "DN150": 5.6,
+            "DN200": 6.3, "DN250": 7.1, "DN300": 8.0,
+        },
         "PN40": {
             "DN15":  3.2, "DN20":  3.2, "DN25":  4.0, "DN32":  4.0,
             "DN40":  4.0, "DN50":  5.0, "DN65":  5.0, "DN80":  5.6,
@@ -61,6 +67,12 @@ EN_PIPE_WALL_MM: dict[str, dict[str, dict[str, float]]] = {
             "DN100": 2.0, "DN125": 2.0, "DN150": 2.0, "DN200": 3.2,
             "DN250": 3.6, "DN300": 4.0,
         },
+        "PN25": {
+            "DN15":  2.0, "DN20":  2.0, "DN25":  2.0, "DN32":  2.0,
+            "DN40":  2.0, "DN50":  2.6, "DN65":  2.6, "DN80":  2.6,
+            "DN100": 3.2, "DN125": 3.2, "DN150": 3.2, "DN200": 4.0,
+            "DN250": 4.5, "DN300": 6.3,
+        },
         "PN40": {
             "DN15":  2.0, "DN20":  2.0, "DN25":  2.6, "DN32":  2.6,
             "DN40":  2.6, "DN50":  3.2, "DN65":  3.2, "DN80":  3.2,
@@ -73,6 +85,7 @@ EN_PIPE_WALL_MM: dict[str, dict[str, dict[str, float]]] = {
 # PN class label descriptions for UI.
 PN_DESCRIPTIONS: dict[str, str] = {
     "PN16": "PN16 — 16 bar rated system (flanges, fittings, valves per EN 1092-1)",
+    "PN25": "PN25 — 25 bar rated system (flanges, fittings, valves per EN 1092-1)",
     "PN40": "PN40 — 40 bar rated system (flanges, fittings, valves per EN 1092-1)",
 }
 
