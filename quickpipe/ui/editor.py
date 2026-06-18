@@ -276,14 +276,13 @@ def render_wall_check(el: dict, inlet_p_bara: float) -> None:
                         f"rated **{cur_rated:.0f} barg**"
                         + ("" if ok else f" — thinner than the recommended {rec:.1f} mm"))
 
-        if st.button(f"Apply {rec:.1f} mm wall (override)", key=f"{el['id']}_applywall",
-                     width="stretch"):
-            el["wall_override"] = True
-            el["wall_override_mm"] = float(rec)
-            # Pre-set the override widgets so they reflect the applied wall next run.
-            st.session_state[f"{el['id']}_wo"] = True
-            st.session_state[f"{el['id']}_wmm"] = float(rec)
-            st.rerun()
+        def _apply_wall(el_id: str = el["id"], _rec: float = rec) -> None:
+            # on_click fires before the next render — safe to set widget-bound keys here.
+            st.session_state[f"{el_id}_wo"] = True
+            st.session_state[f"{el_id}_wmm"] = _rec
+
+        st.button(f"Apply {rec:.1f} mm wall (override)", key=f"{el['id']}_applywall",
+                  on_click=_apply_wall, width="stretch")
 
 
 def render_iso1127_reference(el: dict) -> None:
