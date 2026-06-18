@@ -81,7 +81,7 @@ def _sweep_figure(out):
 _SERVICE_PRESETS: dict[str, dict | None] = {
     "Custom":                              None,
     "Pump suction — NPSH-sensitive":       {"v_max":  1.0, "v_min": 0.0, "dp_max":   5.0},
-    "Pump suction — non-NPSH restricted":  {"v_max":  1.5, "v_min": 0.0, "dp_max":  20.0},
+    "Pump suction — non-NPSH restricted":  {"v_max":  2.0, "v_min": 0.0, "dp_max":  20.0},
     "Pump discharge":                      {"v_max":  3.0, "v_min": 0.5, "dp_max":  50.0},
     "Gravity / drain":                     {"v_max":  1.0, "v_min": 0.3, "dp_max":  10.0},
     "Gas / vapor (process)":               {"v_max": 20.0, "v_min": 5.0, "dp_max": 100.0},
