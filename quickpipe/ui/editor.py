@@ -255,7 +255,7 @@ def render_wall_check(el: dict, inlet_p_bara: float) -> None:
                     f"rated **{r['p_rated_barg']:.0f} barg** at {dt:.0f} °C")
         if r["governed_by"] == "structural floor":
             st.caption(f"↳ Pressure alone needs only {r['t_required_mm']:.2f} mm; the {r['floor_mm']:.1f} mm "
-                       f"structural floor (lightest EN ISO 1127 Serie 1 wall for {dn}) governs, so you don't "
+                       f"structural floor (lightest EN ISO 1127 Series 1 wall for {dn}) governs, so you don't "
                        f"get paper-thin pipe.")
             st.caption("ℹ️ That floor is light **hygienic / light-process** tube — food, pharma, clean "
                        "chemical (EN 10217-7 / EN 10216-5, typically orbital-welded and well-supported). "
