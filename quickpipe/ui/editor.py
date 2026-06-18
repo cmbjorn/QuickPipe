@@ -235,9 +235,13 @@ def render_wall_check(el: dict, inlet_p_bara: float) -> None:
         st.markdown(f"**Recommended wall: {rec:.1f} mm** · governed by **{r['governed_by']}** · "
                     f"rated **{r['p_rated_barg']:.0f} barg** at {dt:.0f} °C")
         if r["governed_by"] == "structural floor":
-            st.caption(f"↳ Pressure alone needs only {r['t_required_mm']:.2f} mm, but the {r['floor_mm']:.1f} mm "
-                       f"structural floor (lightest EN ISO 1127 wall for {dn}) governs — so the tool "
-                       f"won't hand you paper-thin pipe just because the math allows it.")
+            st.caption(f"↳ Pressure alone needs only {r['t_required_mm']:.2f} mm; the {r['floor_mm']:.1f} mm "
+                       f"structural floor (lightest EN ISO 1127 Serie 1 wall for {dn}) governs, so you don't "
+                       f"get paper-thin pipe.")
+            st.caption("ℹ️ That floor is light **hygienic / light-process** tube — food, pharma, clean "
+                       "chemical (EN 10217-7 / EN 10216-5, typically orbital-welded and well-supported). "
+                       "For **rugged industrial service** (vibration, knocks, outdoor racks, heavy supports) "
+                       "step up a wall for mechanical robustness — the pressure rating already has margin.")
         if r["ladder_exceeded"]:
             st.warning(f"Design pressure exceeds even the heaviest standard wall "
                        f"({r['walls'][-1]:.1f} mm → {r['p_rated_barg']:.0f} barg). "
