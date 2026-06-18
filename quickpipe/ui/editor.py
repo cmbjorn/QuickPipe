@@ -67,7 +67,7 @@ def _inlet_panel(inl: dict, prefix: str) -> None:
     _fluid_form(inl["fluid"], prefix)
 
 
-def _pipe(el: dict, inlet_p_bara: float) -> None:
+def _pipe(el: dict, inlet_p_bara: float, row=None) -> None:
     # Apply a pending DN from the auto-sizer BEFORE the selectbox is created, so
     # the widget picks it up (a keyed widget can't be set after instantiation).
     _pend = f"qp_pending_dn_{el['id']}"
@@ -195,6 +195,7 @@ def _pipe(el: dict, inlet_p_bara: float) -> None:
 
     if pipe_type_raw == "DN Pipe":
         render_wall_check(el, inlet_p_bara)
+        render_water_hammer(el, row, inlet_p_bara)
         render_suggest_dn(el, inlet_p_bara)
         render_iso1127_reference(el)
 
@@ -285,6 +286,123 @@ def render_wall_check(el: dict, inlet_p_bara: float) -> None:
                   on_click=_apply_wall, width="stretch")
 
 
+# Young's modulus (Pa) for pipe materials — used in Halliwell celerity formula.
+_E_PIPE_PA: dict[str, float] = {
+    "SS316L": 193e9,
+    "CS":     200e9,
+}
+
+
+def render_water_hammer(el: dict, row, inlet_p_bara: float) -> None:
+    """Joukowski surge pressure estimate for liquid-filled DN pipe segments."""
+    with st.expander("🌊 Water hammer — Joukowski surge", expanded=False):
+        fluid_spec = state.inlet().get("fluid", {})
+        phase = fluid_spec.get("phase", "liquid")
+
+        if phase != "liquid":
+            st.info("Water hammer surge applies to liquid-filled pipe only — "
+                    "gas/vapour compressibility absorbs transient pressure waves.")
+            return
+
+        if row is None or row.v_ms <= 0 or row.flow_kgh <= 0 or row.flow_m3h <= 0:
+            st.info("Solve the line first — velocity and density come from the hydraulic result.")
+            return
+
+        # ── geometry ──────────────────────────────────────────────────────────
+        mat   = el.get("material", "SS316L")
+        dn    = el.get("dn", "DN50")
+        od_mm = state.EN_PIPE_OD_MM.get(mat, {}).get(dn, 0.0)
+        if od_mm <= 0:
+            st.info("Select a DN to run the water hammer check.")
+            return
+
+        t_mm = (float(el.get("wall_override_mm") or 0.0) if el.get("wall_override")
+                else state.EN_PIPE_WALL_MM.get(mat, {}).get(
+                    el.get("pn_class", "PN16"), {}).get(dn, 0.0))
+        if t_mm <= 0:
+            st.info("Wall thickness unavailable for this DN/PN combination.")
+            return
+
+        d_i_m = (od_mm - 2.0 * t_mm) / 1000.0
+        L_m   = float(el.get("length_m", 10.0))
+
+        # ── fluid properties from last solve ──────────────────────────────────
+        V   = row.v_ms
+        rho = row.flow_kgh / row.flow_m3h       # in-situ density kg/m³
+
+        # Speed of sound in the free liquid via CoolProp.
+        import CoolProp.CoolProp as CP
+        from quickpipe.engine._vendor.multiphase_engine import LIQUID_COOLPROP_ID
+        cp_id = LIQUID_COOLPROP_ID.get(fluid_spec.get("liquid_type", "Water"), "Water")
+        T_K  = float(state.inlet().get("T_C", 20.0)) + 273.15
+        try:
+            c_fluid = float(CP.PropsSI("A", "T", T_K, "P", inlet_p_bara * 1e5, cp_id))
+        except Exception:
+            c_fluid = 1480.0    # water at 20 °C fallback
+
+        # ── Halliwell wave celerity (thin-wall, pipe anchored throughout) ─────
+        K_f = rho * c_fluid ** 2                # Pa — liquid bulk modulus
+        E_pa = _E_PIPE_PA.get(mat, 193e9)
+        c   = c_fluid / (1.0 + K_f * d_i_m / (E_pa * (t_mm / 1000.0))) ** 0.5
+
+        t_crit = 2.0 * L_m / c                  # critical closure time (s)
+
+        # ── user input ────────────────────────────────────────────────────────
+        tau = st.number_input(
+            "Valve closure time τ (s)", 0.0, 600.0, 0.0, 0.05,
+            key=f"{el['id']}_wh_tau",
+            help="Time from fully open to fully closed. "
+                 "0 = instantaneous (worst case).")
+
+        # ── surge ΔP (linear slow-closure reduction when τ > 2L/c) ───────────
+        if tau <= t_crit:
+            dP_pa    = rho * c * V
+            regime   = f"⚡ Rapid closure (τ ≤ 2L/c = {t_crit:.3f} s) — full Joukowski surge"
+        else:
+            dP_pa    = rho * c * V * (t_crit / tau)
+            regime   = f"🐢 Slow closure (τ > 2L/c = {t_crit:.3f} s) — surge reduced by {t_crit/tau:.0%}"
+
+        dP_barg      = dP_pa / 1e5
+        P_peak_barg  = (inlet_p_bara - 1.013) + dP_barg   # gauge
+
+        # ── pipe wall rating (EN 13480-3) ─────────────────────────────────────
+        dt_design  = float(el.get("design_t_C") or state.inlet().get("T_C", 25.0))
+        t_eff_mm   = t_mm * (1.0 - 0.125) - float(el.get("corrosion_allow_mm", 0.0))
+        rated_barg = state.pressure_rating_barg(
+            t_eff_mm, od_mm, mat, dt_design, el.get("weld_factor", 1.0))
+        src = "override" if el.get("wall_override") else el.get("pn_class", "PN16")
+
+        # ── output ────────────────────────────────────────────────────────────
+        st.caption(
+            f"Free-fluid c = {c_fluid:.0f} m/s  ·  pipe celerity c = {c:.0f} m/s "
+            f"(−{100*(1 - c/c_fluid):.0f}% from wall elasticity)  ·  "
+            f"ρ = {rho:.0f} kg/m³  ·  V = {V:.2f} m/s")
+        st.markdown(regime)
+        st.markdown(
+            f"**Surge ΔP = {dP_barg:.1f} barg**  ·  "
+            f"Peak = **{P_peak_barg:.1f} barg** "
+            f"({inlet_p_bara - 1.013:.1f} operating + {dP_barg:.1f} surge)")
+
+        ok = P_peak_barg <= rated_barg
+        st.markdown(
+            f"{'✅' if ok else '❌'} Pipe wall rated **{rated_barg:.0f} barg** "
+            f"({src}, EN 13480-3 @ {dt_design:.0f} °C, t = {t_mm:.1f} mm) — "
+            + ("peak within wall rating" if ok else "**peak exceeds pipe wall rating**"))
+
+        st.caption(
+            "**Conservatism:** Joukowski assumes (1) the full flow velocity arrests "
+            "instantly at the valve (ΔV = V) — worst-case single closure event; "
+            "(2) single straight pipe, no branching — reflections from tees, "
+            "reducers, or open ends can amplify or partly cancel the wave; "
+            "(3) no column separation — if the pressure wave drops below vapour "
+            "pressure, a cavity forms and its collapse produces a second, sometimes "
+            "larger, spike. Slow-closure reduction uses the linear Allievi "
+            "approximation (conservative for τ only slightly above 2L/c). "
+            "EN 13480-3 and ASME B31.3 permit a short-duration surge to 1.1× and "
+            "1.33× the allowable operating pressure respectively — verify against "
+            "your applicable code before acting on a marginal result.")
+
+
 def render_iso1127_reference(el: dict) -> None:
     """Reference panel: the three EN ISO 1127 tube series with descriptions.
     Series 1 (pipe-size) is what the wall check sizes; Series 2 & 3 are the
@@ -353,8 +471,9 @@ def render(pre_result) -> None:
         title = f"{_ICON.get(kind,'│')}  #{i+1}  {el.get('name', kind)}  ·  {kind}"
         with st.expander(title, expanded=(len(secs) <= 2 and i == 0)):
             if kind == "pipe":
-                inlet_p = rows[i].p_in_bara if i < len(rows) else state.inlet().get("P_in_bara", 10.0)
-                _pipe(el, inlet_p)
+                row = rows[i] if i < len(rows) else None
+                inlet_p = row.p_in_bara if row else state.inlet().get("P_in_bara", 10.0)
+                _pipe(el, inlet_p, row)
             elif kind == "misc":
                 _misc(el)
 
