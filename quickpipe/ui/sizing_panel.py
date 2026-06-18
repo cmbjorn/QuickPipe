@@ -77,15 +77,41 @@ def _sweep_figure(out):
     return fig
 
 
+# v_max (m/s), v_min (m/s), dp_max (kPa/100m)
+_SERVICE_PRESETS: dict[str, dict | None] = {
+    "Custom":                              None,
+    "Pump suction — NPSH-sensitive":       {"v_max":  1.0, "v_min": 0.0, "dp_max":   5.0},
+    "Pump suction — non-NPSH restricted":  {"v_max":  1.5, "v_min": 0.0, "dp_max":  20.0},
+    "Pump discharge":                      {"v_max":  3.0, "v_min": 0.5, "dp_max":  50.0},
+    "Gravity / drain":                     {"v_max":  1.0, "v_min": 0.3, "dp_max":  10.0},
+    "Gas / vapor (process)":               {"v_max": 20.0, "v_min": 5.0, "dp_max": 100.0},
+    "Flare / relief header":               {"v_max": 30.0, "v_min": 0.0, "dp_max": 200.0},
+    "Two-phase":                           {"v_max": 10.0, "v_min": 0.5, "dp_max":  50.0},
+}
+
+
 def render_suggest_dn(pipe: dict, inlet_p_bara: float) -> None:
     with st.expander("🔎 Suggest DN", expanded=False):
+        pid = pipe["id"]
+
+        # Service preset — renders before the number inputs so session state can
+        # be updated before those widgets draw (avoids the widget-bound-key error).
+        svc = st.selectbox("Service", list(_SERVICE_PRESETS), key=f"{pid}_svc")
+        preset = _SERVICE_PRESETS[svc]
+        prev_key = f"{pid}_svc_prev"
+        if preset is not None and st.session_state.get(prev_key) != svc:
+            st.session_state[f"{pid}_vmax"]  = preset["v_max"]
+            st.session_state[f"{pid}_dpmax"] = preset["dp_max"]
+            st.session_state[f"{pid}_vmin"]  = preset["v_min"]
+        st.session_state[prev_key] = svc
+
         c1, c2, c3 = st.columns(3)
         v_max = c1.number_input("Max velocity (m/s)", 0.1, 100.0, 3.0, 0.5,
-                                key=f"{pipe['id']}_vmax")
+                                key=f"{pid}_vmax")
         dp_max = c2.number_input("Max ΔP/100m (kPa)", 0.1, 1e4, 50.0, 5.0,
-                                 key=f"{pipe['id']}_dpmax")
+                                 key=f"{pid}_dpmax")
         v_min = c3.number_input("Min velocity (m/s)", 0.0, 100.0, 0.0, 0.5,
-                                key=f"{pipe['id']}_vmin")
+                                key=f"{pid}_vmin")
         # Auto-compute every run (the sweep is cheap) — no button to press.
         fluid, T_C = _source_fluid()
         crit = SizingCriteria(v_min=v_min, v_max=v_max, dp_per_100m_max=dp_max)
@@ -106,17 +132,17 @@ def render_suggest_dn(pipe: dict, inlet_p_bara: float) -> None:
         rec = out["recommended_dn"]
         if rec:
             st.success(f"Recommended: **{rec}** (smallest size meeting all criteria)")
-            if st.button(f"Apply {rec}", key=f"{pipe['id']}_apply", width="stretch"):
+            if st.button(f"Apply {rec}", key=f"{pid}_apply", width="stretch"):
                 # The DN selectbox is keyed and already instantiated this run, so
                 # we can't set its value now — hand it off and let the editor
                 # apply it next run, before the selectbox renders.
-                st.session_state[f"qp_pending_dn_{pipe['id']}"] = rec
+                st.session_state[f"qp_pending_dn_{pid}"] = rec
                 st.rerun()
         else:
             st.warning("No DN meets all criteria — relax the limits or split the flow.")
         st.plotly_chart(_sweep_figure(out), use_container_width=True,
                         config={"displayModeBar": False},
-                        key=f"{pipe['id']}_sweepfig")
+                        key=f"{pid}_sweepfig")
         df = pd.DataFrame(_window(out["table"], rec))
         st.dataframe(df, hide_index=True, use_container_width=True,
                      column_config={
