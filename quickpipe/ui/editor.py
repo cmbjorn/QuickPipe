@@ -349,10 +349,13 @@ def render_water_hammer(el: dict, row, inlet_p_bara: float) -> None:
 
         # ── user input ────────────────────────────────────────────────────────
         tau = st.number_input(
-            "Valve closure time τ (s)", 0.0, 600.0, 0.0, 0.05,
+            "Valve closure time τ (s)", 0.0, 600.0, 1.0, 0.05,
             key=f"{el['id']}_wh_tau",
             help="Time from fully open to fully closed. "
-                 "0 = instantaneous (worst case).")
+                 "1 s is a reasonable default for a fast actuated valve. "
+                 "Check valves can slam in 0.05–0.3 s on pump trip — "
+                 "use a conservative short value for those. "
+                 "0 = instantaneous (absolute worst case).")
 
         # ── surge ΔP (linear slow-closure reduction when τ > 2L/c) ───────────
         if tau <= t_crit:
